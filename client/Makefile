@@ -86,7 +86,7 @@ LD_SYS_LIBS = $(SYS_LIBRARIES)
 # gcc3 and gcc4 doesn't support thumb-interworking, but compiles anyway
 # gcc3/4 doesn't work with -mapcs-32
 # use the USE_CARDS define when using a 20-port pc-104 daughter card
-CC_FLAGS = -static -g -DSERVER_146 -DTS_7800 -DUSE_CARDS -Wstrict-prototypes -mcpu=arm920t
+CC_FLAGS = -static -g -DUSE_CARDS -Wstrict-prototypes -mcpu=arm920t
 #CC_FLAGS = -static -g -DTS_7800 -Wstrict-prototypes -mcpu=arm920t
 #CC_FLAGS = -static -g -Wstrict-prototypes -mcpu=arm920t
 GNULDFLAGS_T = ${GNULDFLAGS} -pthread
