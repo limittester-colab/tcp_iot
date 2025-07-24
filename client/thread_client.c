@@ -8,6 +8,8 @@
 #include <unistd.h> // read(), write(), close()
 #include<pthread.h> //for threading , link with lpthread
 #include <errno.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 #include "mytypes.h"
 #include "tasks.h"
@@ -15,6 +17,14 @@
 #define MAX 80
 #define PORT 5193
 #define SA struct sockaddr
+
+int main_qid;
+key_t main_key;
+struct msgqbuf msg;
+int msgtype = 1;
+static int close_program;
+
+void *read_thread(void *);
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 
@@ -53,16 +63,30 @@ void func(void)
     char buff[MAX];
     int n;
 	int cmd = 44;
+	msg.mtype = msgtype;
+	int ret;
+	
     for (;;) 
 	{
         bzero(buff, sizeof(buff));
-        printf("Enter the string : ");
+        //printf("Enter the string : ");
         n = 0;
         while ((buff[n++] = getchar()) != '\n');
 		
 		n--;
 		printf("msg_len: %d\n",n);
 		send_msg(n, buff,cmd, 0);
+		memset(msg.mtext,0,sizeof(msg.mtext));
+		memcpy(msg.mtext,buff,n);
+		ret = 0;
+		ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+		if(ret == -1)
+		{
+			perror("msgsnd error");
+		}
+		printf("ret: %d\n",ret);
+		if(n == 0)
+			return;
 /*
         write(sockfd, buff, sizeof(buff));
         bzero(buff, sizeof(buff));
@@ -77,13 +101,119 @@ void func(void)
     }
 }
 
-int main()
+void *read_queue_thread(void *socket_desc)
+{
+	msg.mtype = msgtype;
+	memset(msg.mtext,0,sizeof(msg.mtext));
+	printf("queue thread started\n");
+	ssize_t ret = 1;
+	
+	do 
+	{
+		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
+		printf("ret: %ld\n",ret);
+		if(ret == -1)
+		{
+			if(errno != ENOMSG)
+			{
+				perror("msgrcv");
+				printf("msgrcv error\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+		printf("read queue thread: %s\n",msg.mtext);
+	}
+	while(ret > 0);
+}
+
+void *read_thread(void *socket_desc)
+{
+	char tempx[200];
+	int msg_len;
+	int ret;
+	UCHAR cmd;
+	int i;
+
+	//Get the socket descriptor
+	int read_size;
+	
+	//Receive a message from client
+//	printf("start %d\n", global_socket);
+	msg_len = 1;
+	while(msg_len > 0)
+	{
+		printf("sock: %d\n",global_socket);
+		msg_len = get_msg();
+//		printf("msg_len: %d\n",msg_len);
+		ret = recv_tcp(&tempx[0],msg_len+1,1);
+//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
+//		currently the ret is just 1 more than msg_len 
+		cmd = tempx[0];
+
+/*
+		for(i = 0;i < msg_len;i++)
+			printf("%02x ",tempx[i]);
+		printf("\n");
+
+		for(i = 1;i < msg_len+2;i++)
+			printf("%02x ",tempx[i]);
+		printf("\n");
+*/
+		for(i = 1;i < msg_len+1;i++)
+			printf("%c",tempx[i]);
+		printf("\n");
+
+		printf("cmd: %d\n",cmd);
+//		print_cmd(cmd);
+
+		memmove(tempx,tempx+1,msg_len);
+		//printf("\n");
+
+		for(i = 0;i < msg_len;i++)
+			printf("%02x ",tempx[i]);
+
+		printf("\n");
+	}
+
+	if(msg_len == 0)
+	{
+		puts("Client disconnected");
+		fflush(stdout);
+		printf("done\n");
+	}
+	else if(msg_len == -1)
+	{
+		perror("recv failed");
+	}
+		
+	//Free the socket pointer
+	free(global_socket);
+
+	close_program = 1;
+	return 0;
+}
+
+
+int main(int argc, char *argv[])
 {
     int sockfd, connfd;
     struct sockaddr_in servaddr, cli;
 	char buff[200];
 	int n = 0;
+	close_program = 0;
+	char client_name[30];
 
+	main_qid = msgget(main_key, IPC_CREAT | 0666);
+
+	if(argc != 2)
+	{
+		printf("must enter the name of the client so it can be sent to the server\n");
+		exit(1);
+	}
+	memset(client_name, 0, sizeof(client_name));
+	printf("%s\n",argv[1]);
+	strcpy(client_name, argv[1]);
+	printf("client name: %s\n",client_name);
     // socket create and verification
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
@@ -109,11 +239,35 @@ int main()
         printf("connected to the server..\n");
 	global_socket = sockfd;
         n = 0;
+//	when client logs in, it sends the socket (as an int)
+//	then it sends 30 bytes as the name of the client (can be padded with zeros)		
+
 //	getchar();
 	printf("start...\n");
-    // function for chat
+	pthread_t sniffer_thread;
+	pthread_t queue_thread;
+	
+	if( pthread_create( &sniffer_thread , NULL ,  read_thread , (void*) global_socket) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+	if( pthread_create( &queue_thread , NULL ,  read_queue_thread , (void*) global_socket) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+
+	// send the client name to the server 
+	send_msg(30, client_name, 0, 0);
+
     func();
 
+	while(close_program == 0)
+	{
+		uSleep(1,0);
+	}
+	printf("closing program\n");
     // close the socket
     close(sockfd);
 }
@@ -176,7 +330,7 @@ void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)
 		ret = send_tcp(&pre_preamble[0],8);
 		temp[0] = (UCHAR)(msg_len & 0x0F);
 		temp[1] = (UCHAR)((msg_len & 0xF0) >> 4);
-		printf("%02x %02x\n",temp[0],temp[1]);
+//		printf("%02x %02x\n",temp[0],temp[1]);
 		send_tcp((UCHAR *)&temp[0],1);
 		send_tcp((UCHAR *)&temp[1],1);
 		send_tcp((UCHAR *)&msg_type,1);
@@ -187,7 +341,7 @@ void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)
 			send_tcp((UCHAR *)&msg[i],1);
 //			send_tcp((UCHAR *)&ret,1);
 		}
-		printf("%d ",msg_len);
+//		printf("%d ",msg_len);
 	}
 }
 /*********************************************************************/
@@ -226,11 +380,8 @@ int send_tcp(UCHAR *str,int len)
 	//pthread_mutex_unlock(&tcp_write_lock);
 	if(ret < 0 && (strcmp(errmsg,"Success") != 0))
 	{
-		if(same_msg == 0)
-			printf(errmsg);
-		same_msg = 1;
+		printf(errmsg);
 	}
-	else same_msg = 0;
 	return ret;
 }
 /*********************************************************************/

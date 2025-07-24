@@ -6,13 +6,22 @@
 #include<unistd.h>	//write
 #include<pthread.h> //for threading , link with lpthread
 #include <errno.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
 
 #include "mytypes.h"
 #include "tasks.h"
+#define MAX 80
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 
-void *connection_handler(void *);
+void *listen_thread(void *);
+void *send_thread(void *);
+
+void add_client_queue(char client_name)
+{
+	printf("client name: %s\n",client_name);
+}
 
 int uSleep(time_t sec, long nanosec)
 {
@@ -49,6 +58,9 @@ int main(int argc , char *argv[])
 	int socket_desc , new_socket , c , *new_sock;
 	struct sockaddr_in server , client;
 	char *message;
+	int msg_len;
+	char tempx[30];
+	int ret;
 	
 	//Create socket
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
@@ -56,12 +68,12 @@ int main(int argc , char *argv[])
 	{
 		printf("Could not create socket");
 	}
-	
+
 	//Prepare the sockaddr_in structure
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
 	server.sin_port = htons( 5193 );
-	
+
 	//Bind
 	if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
 	{
@@ -69,34 +81,46 @@ int main(int argc , char *argv[])
 		return 1;
 	}
 	puts("bind done");
-	
+
 	//Listen
 	listen(socket_desc , 3);
-	
+
 	//Accept and incoming connection
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
 	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
 		puts("Connection accepted");
-		
+
 		//Reply to the client
 		//message = "Hello Client , I have received your connection. And now I will assign a handler for you\n";
 		//write(new_socket , message , strlen(message));
-		
+
 		pthread_t sniffer_thread;
+		pthread_t sender_thread;
 		new_sock = malloc(1);
 		*new_sock = new_socket;
-		
-		if( pthread_create( &sniffer_thread , NULL ,  connection_handler , (void*) new_sock) < 0)
+
+//		msg_len = get_msg(new_sock);
+//		printf("msg_len: %d\n",msg_len);
+//		ret = recv_tcp(new_sock, &tempx[0],msg_len+2,1);
+//		printf("%s logged in\n",tempx);
+
+		if( pthread_create( &sniffer_thread , NULL ,  listen_thread , (void*) new_sock) < 0)
 		{
-			perror("could not create thread");
+			perror("could not create sniffer_thread");
 			return 1;
 		}
-		
+/*
+		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
+		{
+			perror("could not create sender_thread");
+			return 1;
+		}
+*/
 		//Now join the thread , so that we dont terminate before the thread
-//		pthread_join( sniffer_thread , NULL);
 		puts("Handler assigned");
+//		pthread_join( sniffer_thread , NULL);
 	}
 	
 	if (new_socket<0)
@@ -112,7 +136,7 @@ int main(int argc , char *argv[])
  * This will handle connection for each client
  * */
 #if 0
-void *connection_handler(void *socket_desc)
+void *listen_thread(void *socket_desc)
 {
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
@@ -135,7 +159,7 @@ void *connection_handler(void *socket_desc)
 /*
  * This will handle connection for each client
  * */
-void *connection_handler(void *socket_desc)
+void *listen_thread(void *socket_desc)
 {
 	char tempx[200];
 	int msg_len;
@@ -143,25 +167,31 @@ void *connection_handler(void *socket_desc)
 	UCHAR cmd;
 	UCHAR dest;
 	int i;
+	char client_name[30];
+	CLIENT_NAME *cl;
 
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
 	int read_size;
 	
 	//Receive a message from client
-	printf("start %d\n", sock);
+//	printf("start %d\n", sock);
 	msg_len = 1;
+	memset(client_name, 0, sizeof(client_name));
+
 	while(msg_len > 0)
 	{
+//		printf("sock: %d\n",sock);
 		msg_len = get_msg(sock);
-		printf("msg_len: %d\n",msg_len);
+//		printf("msg_len: %d\n",msg_len);
 		ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
-		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
+		printf("sock: %d\n",sock);
+//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
 		cmd = tempx[0];
 		dest = tempx[1];
 
 		printf("dest: %d\n",dest);
-
+/*
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
 		printf("\n");
@@ -169,20 +199,30 @@ void *connection_handler(void *socket_desc)
 		for(i = 2;i < msg_len+2;i++)
 			printf("%02x ",tempx[i]);
 		printf("\n");
-
+*/
 		for(i = 2;i < msg_len+2;i++)
 			printf("%c",tempx[i]);
 		printf("\n");
 
 		printf("cmd: %d\n",cmd);
-		printf("read task: %d\n",index);
 //		print_cmd(cmd);
 
 		memmove(tempx,tempx+2,msg_len);
-		//printf("\n");
 
+		if(client_name[0] == 0)
+		{
+			strcpy(client_name, tempx);
+			printf("this client is called: %s\n",client_name);
+//			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
+			//add_client_queue(client_name);
+		}else
+		{
+			printf("client name: %s\n",client_name);
+		}
+/*
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
+*/
 		printf("\n");
 	}
 
@@ -201,6 +241,26 @@ void *connection_handler(void *socket_desc)
 	
 	return 0;
 }
+
+void *send_thread(void *socket_desc)
+{
+	char buff[MAX];
+    int n;
+	int cmd = 44;
+	int sock = *(int*)socket_desc;
+	printf("start send_thread\n");
+    for (;;) 
+	{
+        bzero(buff, sizeof(buff));
+        printf("Enter the string : ");
+        n = 0;
+        while ((buff[n++] = getchar()) != '\n');
+		n--;
+		printf("msg_len: %d\n",n);
+		send_msg(sock, n, buff, cmd);
+	}
+}
+
 #if 1
 /*********************************************************************/
 /*********************************************************************/
@@ -349,11 +409,8 @@ int send_tcp(int sd, UCHAR *str,int len)
 //	pthread_mutex_unlock(&tcp_write_lock);
 	if(ret < 0 && (strcmp(errmsg,"Success") != 0))
 	{
-		if(same_msg == 0)
-			printf(errmsg);
-		same_msg = 1;
+		printf(errmsg);
 	}
-	else same_msg = 0;
 	return ret;
 }
 
