@@ -17,6 +17,12 @@ static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 
 void *listen_thread(void *);
 void *send_thread(void *);
+void *read_queue_thread(void *);
+
+int main_qid;
+key_t main_key;
+struct msgqbuf msg;
+int msgtype = 1;
 
 void add_client_queue(char client_name)
 {
@@ -63,6 +69,8 @@ int main(int argc , char *argv[])
 	int ret;
 	
 	//Create socket
+	main_qid = msgget(main_key, IPC_CREAT | 0666);
+
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
 	if (socket_desc == -1)
 	{
@@ -98,6 +106,8 @@ int main(int argc , char *argv[])
 
 		pthread_t sniffer_thread;
 		pthread_t sender_thread;
+		pthread_t queue_thread;
+
 		new_sock = malloc(1);
 		*new_sock = new_socket;
 
@@ -111,6 +121,13 @@ int main(int argc , char *argv[])
 			perror("could not create sniffer_thread");
 			return 1;
 		}
+		
+		if( pthread_create( &queue_thread , NULL ,  read_queue_thread , (void*) global_socket) < 0)
+		{
+			perror("could not create thread");
+			return 1;
+		}
+
 /*
 		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
 		{
@@ -169,6 +186,8 @@ void *listen_thread(void *socket_desc)
 	int i;
 	char client_name[30];
 	CLIENT_NAME *cl;
+	msg.mtype = msgtype;
+	int skip = 0;
 
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
@@ -224,6 +243,23 @@ void *listen_thread(void *socket_desc)
 			printf("%02x ",tempx[i]);
 */
 		printf("\n");
+
+//		if(skip)
+		if(1)
+		{
+			printf("send msg\n");
+
+			memset(msg.mtext,0,sizeof(msg.mtext));
+			memcpy(msg.mtext,tempx,msg_len);
+			ret = 0;
+			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+			if(ret == -1)
+			{
+				perror("msgsnd error");
+			}
+			//printf("ret: %d\n",ret);
+			skip = 1;
+		}
 	}
 
 	if(msg_len == 0)
@@ -260,6 +296,32 @@ void *send_thread(void *socket_desc)
 		send_msg(sock, n, buff, cmd);
 	}
 }
+
+void *read_queue_thread(void *socket_desc)
+{
+	msg.mtype = msgtype;
+	memset(msg.mtext,0,sizeof(msg.mtext));
+	printf("queue thread started\n");
+	ssize_t ret = 1;
+	
+	do 
+	{
+		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
+		if(ret == -1)
+		{
+			if(errno != ENOMSG)
+			{
+				perror("msgrcv");
+				printf("msgrcv error\n");
+				exit(EXIT_FAILURE);
+			}
+			printf("ret: %ld %d\n",ret,errno);
+		}
+		printf("read queue thread: %s\n",msg.mtext);
+	}
+	while(ret > 0);
+}
+
 
 #if 1
 /*********************************************************************/
