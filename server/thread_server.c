@@ -113,19 +113,39 @@ int main(int argc , char *argv[])
 		return 1;
 	}
 */
-	printf("no_threads: %d\n",no_threads);
+	printf("total no_threads 1: %d\n",no_threads);
 	while(no_threads < 1);
+	printf("total no_threads 2: %d\n",no_threads);
 
 	for(i = 0;i < no_threads;i++)
 	{
-		printf("wait for thread to quit\n");
 		if(pthread_join(pthreads_list[i].listen_thread, NULL) != 0)
 		{
-			perror("join failed");
+			perror("join failed on listen_thread join");
+			exit(1);
+		}
+		pthread_kill(pthreads_list[i].read_queue_thread,0);
+	}
+
+	printf("test1\n");
+/*
+	for(i = 0;i < no_threads;i++)
+	{
+		printf("wait for listen_thread to quit\n");
+		if(pthread_join(pthreads_list[i].listen_thread, NULL) != 0)
+		{
+			perror("join failed on listen_thread join");
+			exit(1);
+		}
+		printf("wait for read_queue_thread to quit\n");
+		if(pthread_join(pthreads_list[i].read_queue_thread, NULL) != 0)
+		{
+			perror("join failed on read_queue_thread join");
 			exit(1);
 		}
 		printf("quit thread %d\n",pthreads_list[i].sock);
 	}
+*/
 	pthread_kill(sock_thread, 0);
 	printf("done\n");
 	
@@ -187,16 +207,16 @@ void *new_sock_thread(void *socket_desc)
 			return 1;
 		}
 		pthreads_list[no_threads].sock = new_socket;
-		no_threads++;
-		printf("no threads: %d\n",no_threads);
-		
-/*
-		if( pthread_create( &queue_thread , NULL ,  read_queue_thread , (void*) global_socket) < 0)
+
+		if( pthread_create( &(pthreads_list[no_threads].read_queue_thread) , NULL ,  read_queue_thread , (void*) new_sock) < 0)
 		{
 			perror("could not create thread");
 			return 1;
 		}
+		pthreads_list[no_threads].sock = new_sock;
+		no_threads++;
 
+/*
 		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
 		{
 			perror("could not create sender_thread");
@@ -238,12 +258,12 @@ void *listen_thread(void *socket_desc)
 		msg_len = get_msg(sock);
 //		printf("msg_len: %d\n",msg_len);
 		ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
-		printf("sock: %d\n",sock);
+//		printf("sock: %d\n",sock);
 //		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
 		cmd = tempx[0];
 		dest = tempx[1];
 
-		printf("dest: %d\n",dest);
+//		printf("dest: %d\n",dest);
 /*
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
@@ -257,7 +277,7 @@ void *listen_thread(void *socket_desc)
 			printf("%c",tempx[i]);
 		printf("\n");
 
-		printf("cmd: %d\n",cmd);
+//		printf("cmd: %d\n",cmd);
 //		print_cmd(cmd);
 
 		memmove(tempx,tempx+2,msg_len);
@@ -299,8 +319,9 @@ void *listen_thread(void *socket_desc)
 	if(msg_len == 0)
 	{
 		puts("Client disconnected");
-		fflush(stdout);
+//		fflush(stdout);
 	}
+
 	else if(msg_len == -1)
 	{
 		perror("recv failed");
@@ -308,6 +329,14 @@ void *listen_thread(void *socket_desc)
 		
 	//Free the socket pointer
 	free(socket_desc);
+	for(i = 0;i < no_threads;i++)
+	{
+		if(socket_desc == pthreads_list[i].sock)
+		{
+			pthread_kill(pthreads_list[i].read_queue_thread,0);
+		}
+	}
+	pthread_exit(NULL);
 	
 	return 0;
 }
@@ -408,7 +437,7 @@ void send_msg(int sd, int msg_len, UCHAR *msg, UCHAR msg_type)
 	ret = send_tcp(sd, &pre_preamble[0],8);
 	temp[0] = (UCHAR)(msg_len & 0x0F);
 	temp[1] = (UCHAR)((msg_len & 0xF0) >> 4);
-	//printf("%02x %02x\n",temp[0],temp[1]);
+	printf("%02x %02x\n",temp[0],temp[1]);
 	send_tcp(sd, (UCHAR *)&temp[0],1);
 	send_tcp(sd, (UCHAR *)&temp[1],1);
 	send_tcp(sd, (UCHAR *)&msg_type,1);

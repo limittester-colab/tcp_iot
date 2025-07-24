@@ -76,6 +76,7 @@ void func(void)
 		n--;
 		printf("msg_len: %d\n",n);
 		send_msg(n, buff,cmd, 0);
+/*
 		memset(msg.mtext,0,sizeof(msg.mtext));
 		memcpy(msg.mtext,buff,n);
 		ret = 0;
@@ -84,20 +85,10 @@ void func(void)
 		{
 			perror("msgsnd error");
 		}
+*/
 		printf("ret: %d\n",ret);
 		if(n == 0)
 			return;
-/*
-        write(sockfd, buff, sizeof(buff));
-        bzero(buff, sizeof(buff));
-
-        read(sockfd, buff, sizeof(buff));
-        printf("From Server : %s", buff);
-        if ((strncmp(buff, "exit", 4)) == 0) {
-            printf("Client Exit...\n");
-            break;
-        }
-*/
     }
 }
 
@@ -108,7 +99,7 @@ void *read_queue_thread(void *socket_desc)
 	printf("queue thread started\n");
 	ssize_t ret = 1;
 	
-	do 
+	for(;;)
 	{
 		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
 		printf("ret: %ld\n",ret);
@@ -123,7 +114,6 @@ void *read_queue_thread(void *socket_desc)
 		}
 		printf("read queue thread: %s\n",msg.mtext);
 	}
-	while(ret > 0);
 }
 
 void *read_thread(void *socket_desc)
@@ -144,35 +134,38 @@ void *read_thread(void *socket_desc)
 	{
 		printf("sock: %d\n",global_socket);
 		msg_len = get_msg();
-//		printf("msg_len: %d\n",msg_len);
-		ret = recv_tcp(&tempx[0],msg_len+1,1);
-//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
-//		currently the ret is just 1 more than msg_len 
-		cmd = tempx[0];
+		if(msg_len > 0)
+		{
+	//		printf("msg_len: %d\n",msg_len);
+			ret = recv_tcp(&tempx[0],msg_len+1,1);
+	//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
+	//		currently the ret is just 1 more than msg_len 
+			cmd = tempx[0];
 
-/*
-		for(i = 0;i < msg_len;i++)
-			printf("%02x ",tempx[i]);
-		printf("\n");
+	/*
+			for(i = 0;i < msg_len;i++)
+				printf("%02x ",tempx[i]);
+			printf("\n");
 
-		for(i = 1;i < msg_len+2;i++)
-			printf("%02x ",tempx[i]);
-		printf("\n");
-*/
-		for(i = 1;i < msg_len+1;i++)
-			printf("%c",tempx[i]);
-		printf("\n");
+			for(i = 1;i < msg_len+2;i++)
+				printf("%02x ",tempx[i]);
+			printf("\n");
+	*/
+			for(i = 1;i < msg_len+1;i++)
+				printf("%c",tempx[i]);
+			printf("\n");
 
-		printf("cmd: %d\n",cmd);
-//		print_cmd(cmd);
+			printf("cmd: %d\n",cmd);
+	//		print_cmd(cmd);
 
-		memmove(tempx,tempx+1,msg_len);
-		//printf("\n");
+			memmove(tempx,tempx+1,msg_len);
+			//printf("\n");
 
-		for(i = 0;i < msg_len;i++)
-			printf("%02x ",tempx[i]);
+			for(i = 0;i < msg_len;i++)
+				printf("%02x ",tempx[i]);
 
-		printf("\n");
+			printf("\n");
+		}
 	}
 
 	if(msg_len == 0)
@@ -186,9 +179,6 @@ void *read_thread(void *socket_desc)
 		perror("recv failed");
 	}
 		
-	//Free the socket pointer
-	free(global_socket);
-
 	close_program = 1;
 	return 0;
 }
@@ -252,26 +242,23 @@ int main(int argc, char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
+/*
 	if( pthread_create( &queue_thread , NULL ,  read_queue_thread , (void*) global_socket) < 0)
 	{
 		perror("could not create thread");
 		return 1;
 	}
-
+*/;
 	// send the client name to the server 
 	send_msg(30, client_name, 0, 0);
 
     func();
 
-
-
-	while(close_program == 0)
-	{
-		uSleep(1,0);
-	}
+    close(global_socket);
+	pthread_kill(sniffer_thread, 0);
+//	pthread_kill(read_queue_thread, 0);
 	printf("closing program\n");
     // close the socket
-    close(sockfd);
 }
 #if 1
 int test_sock(void)
@@ -292,16 +279,15 @@ int get_msg(void)
 
 	UCHAR preamble[10];
 	ret = recv_tcp(preamble,8,1);
-	//printf("ret: %d\n",ret);
+	printf("ret: %d\n",ret);
 	if(ret < 0)
 	{
 		printf("ret < 0");
 	}
 	if(memcmp(preamble,pre_preamble,8) != 0)
 	{
-		//printf("bad preamble\n");
-		printf("g");
-		uSleep(2,0);
+		printf("bad preamble\n");
+//		uSleep(2,0);
 		return -1;
 	}
 	ret = recv_tcp(&low,1,1);

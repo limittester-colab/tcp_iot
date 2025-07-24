@@ -17,7 +17,7 @@ typedef struct
 typedef struct
 {
 	pthread_t listen_thread;
-//	pthread_t read_queue_thread;
+	pthread_t read_queue_thread;
 	int sock;
 }THREADS;
 
