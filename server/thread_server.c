@@ -18,11 +18,15 @@ static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 void *listen_thread(void *);
 void *send_thread(void *);
 void *read_queue_thread(void *);
+void *new_sock_thread(void *);
 
 int main_qid;
 key_t main_key;
 struct msgqbuf msg;
 int msgtype = 1;
+int no_threads;
+
+THREADS pthreads_list[5];
 
 void add_client_queue(char client_name)
 {
@@ -61,14 +65,17 @@ int uSleep(time_t sec, long nanosec)
 
 int main(int argc , char *argv[])
 {
-	int socket_desc , new_socket , c , *new_sock;
-	struct sockaddr_in server , client;
+	int socket_desc ,  c;
+	struct sockaddr_in server;
 	char *message;
 	int msg_len;
 	char tempx[30];
 	int ret;
-	
+	int i;
+	pthread_t sock_thread;
 	//Create socket
+	no_threads = 0;
+
 	main_qid = msgget(main_key, IPC_CREAT | 0666);
 
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
@@ -93,58 +100,34 @@ int main(int argc , char *argv[])
 	//Listen
 	listen(socket_desc , 3);
 
-	//Accept and incoming connection
-	puts("Waiting for incoming connections...");
-	c = sizeof(struct sockaddr_in);
-	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
+	if( pthread_create( &sock_thread , NULL ,  new_sock_thread , (void*) socket_desc) < 0)
 	{
-		puts("Connection accepted");
-
-		//Reply to the client
-		//message = "Hello Client , I have received your connection. And now I will assign a handler for you\n";
-		//write(new_socket , message , strlen(message));
-
-		pthread_t sniffer_thread;
-		pthread_t sender_thread;
-		pthread_t queue_thread;
-
-		new_sock = malloc(1);
-		*new_sock = new_socket;
-
-//		msg_len = get_msg(new_sock);
-//		printf("msg_len: %d\n",msg_len);
-//		ret = recv_tcp(new_sock, &tempx[0],msg_len+2,1);
-//		printf("%s logged in\n",tempx);
-
-		if( pthread_create( &sniffer_thread , NULL ,  listen_thread , (void*) new_sock) < 0)
-		{
-			perror("could not create sniffer_thread");
-			return 1;
-		}
-		
-		if( pthread_create( &queue_thread , NULL ,  read_queue_thread , (void*) global_socket) < 0)
-		{
-			perror("could not create thread");
-			return 1;
-		}
-
-/*
-		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
-		{
-			perror("could not create sender_thread");
-			return 1;
-		}
-*/
-		//Now join the thread , so that we dont terminate before the thread
-		puts("Handler assigned");
-//		pthread_join( sniffer_thread , NULL);
+		perror("could not create thread");
+		return 1;
 	}
-	
+
+/*	
 	if (new_socket<0)
 	{
 		perror("accept failed");
 		return 1;
 	}
+*/
+	printf("no_threads: %d\n",no_threads);
+	while(no_threads < 1);
+
+	for(i = 0;i < no_threads;i++)
+	{
+		printf("wait for thread to quit\n");
+		if(pthread_join(pthreads_list[i].listen_thread, NULL) != 0)
+		{
+			perror("join failed");
+			exit(1);
+		}
+		printf("quit thread %d\n",pthreads_list[i].sock);
+	}
+	pthread_kill(sock_thread, 0);
+	printf("done\n");
 	
 	return 0;
 }
@@ -173,9 +156,60 @@ void *listen_thread(void *socket_desc)
 	return 0;
 }
 #endif
+
+void *new_sock_thread(void *socket_desc)
+{
+	int c;
+	int *new_sock;
+	int new_socket;
+	struct sockaddr_in client;
+
+	puts("Waiting for incoming connections...");
+	c = sizeof(struct sockaddr_in);
+	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
+	{
+		puts("Connection accepted");
+		//Reply to the client
+		//message = "Hello Client , I have received your connection. And now I will assign a handler for you\n";
+		//write(new_socket , message , strlen(message));
+
+		new_sock = malloc(1);
+		*new_sock = new_socket;
+
+//		msg_len = get_msg(new_sock);
+//		printf("msg_len: %d\n",msg_len);
+//		ret = recv_tcp(new_sock, &tempx[0],msg_len+2,1);
+//		printf("%s logged in\n",tempx);
+
+		if( pthread_create( &(pthreads_list[no_threads].listen_thread) , NULL ,  listen_thread , (void*) new_sock) < 0)
+		{
+			perror("could not create sniffer_thread");
+			return 1;
+		}
+		pthreads_list[no_threads].sock = new_socket;
+		no_threads++;
+		printf("no threads: %d\n",no_threads);
+		
 /*
- * This will handle connection for each client
- * */
+		if( pthread_create( &queue_thread , NULL ,  read_queue_thread , (void*) global_socket) < 0)
+		{
+			perror("could not create thread");
+			return 1;
+		}
+
+		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
+		{
+			perror("could not create sender_thread");
+			return 1;
+		}
+*/
+		//Now join the thread , so that we dont terminate before the thread
+		puts("Handler assigned");
+//		pthread_join( sniffer_thread , NULL);
+	}
+	
+}
+
 void *listen_thread(void *socket_desc)
 {
 	char tempx[200];
@@ -243,9 +277,8 @@ void *listen_thread(void *socket_desc)
 			printf("%02x ",tempx[i]);
 */
 		printf("\n");
-
-//		if(skip)
-		if(1)
+/*
+		if(skip)
 		{
 			printf("send msg\n");
 
@@ -260,6 +293,7 @@ void *listen_thread(void *socket_desc)
 			//printf("ret: %d\n",ret);
 			skip = 1;
 		}
+*/
 	}
 
 	if(msg_len == 0)

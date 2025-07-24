@@ -14,6 +14,13 @@ typedef struct
 	char client_name[30];
 }CLIENT_NAME;
 
+typedef struct
+{
+	pthread_t listen_thread;
+//	pthread_t read_queue_thread;
+	int sock;
+}THREADS;
+
 // global variables
 int trunning_days, trunning_hours, trunning_minutes, trunning_seconds;
 int trunning_seconds_off;

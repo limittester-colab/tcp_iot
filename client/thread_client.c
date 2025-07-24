@@ -263,6 +263,8 @@ int main(int argc, char *argv[])
 
     func();
 
+
+
 	while(close_program == 0)
 	{
 		uSleep(1,0);
