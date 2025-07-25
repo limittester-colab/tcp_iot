@@ -433,6 +433,7 @@ void *tester_thread(void *socket_desc)
 				strcpy(buff,"hello text\0");
 				msg_len = strlen(buff);
 				cmd = 'A';
+				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 
@@ -440,18 +441,35 @@ void *tester_thread(void *socket_desc)
 				strcpy(buff,"asdf test\0");
 				msg_len = strlen(buff);
 				cmd = 'B';
+				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'c':
 				strcpy(buff,"asdf tester 1234\0");
 				msg_len = strlen(buff);
 				cmd = 'C';
+				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'd':
 				strcpy(buff,"what's up test\0");
 				msg_len = strlen(buff);
 				cmd = 'D';
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'e':
+				strcpy(buff,"closing client program\0");
+				msg_len = strlen(buff);
+				cmd = 99;
+				sock = 4;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'f':
+				strcpy(buff,"closing client program\0");
+				msg_len = strlen(buff);
+				cmd = 99;
+				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 

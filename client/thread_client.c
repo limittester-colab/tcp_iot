@@ -21,9 +21,12 @@
 
 int main_qid;
 key_t main_key;
+static int close_program;
 
 void *read_thread(void *);
 void *send_queue_thread(void *);
+pthread_t pread_thread;
+pthread_t queue_thread;
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 
@@ -107,7 +110,7 @@ void *send_queue_thread(void *buff)
 	{
 		memset(msg.mtext,0,sizeof(msg.mtext));
 		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
-		printf("ret: %ld\n",ret);
+		printf("ret: %ld errno: %d\n",ret,errno);
 		if(ret == -1)
 		{
 			if(errno != ENOMSG)
@@ -119,7 +122,7 @@ void *send_queue_thread(void *buff)
 		}
 //		printf("read queue thread: %s\n",msg.mtext);
 		cmd = msg.mtext[0];
-		printf("cmd: %d\n",cmd);
+//		printf("cmd: %d\n",cmd);
 		// msg is low byte of msg_len 1st
 		// then high byte
 
@@ -134,7 +137,6 @@ void *send_queue_thread(void *buff)
 		{
 			printf("%02x ",msg.mtext[i]);
 		}
-
 		printf("\n");
 	}
 }
@@ -167,6 +169,17 @@ void *read_thread(void *socket_desc)
 	//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
 	//		currently the ret is just 1 more than msg_len 
 			cmd = tempx[0];
+			if(cmd == 99)
+			{
+				printf("closing program\n");
+				memset(tempx,0,sizeof(tempx));
+				send_msg(0, tempx,cmd, 0);
+				msg_len = 0;
+				pthread_kill(pread_thread,NULL);
+				close(global_socket);
+				close_program = 1;
+				return;
+			}
 
 	/*
 			for(i = 0;i < msg_len;i++)
@@ -229,6 +242,7 @@ int main(int argc, char *argv[])
 	char buff2[20];
 	int n = 0;
 	char client_name[30];
+	close_program = 0;
 
 	main_qid = msgget(main_key, IPC_CREAT | 0666);
 
@@ -272,10 +286,8 @@ int main(int argc, char *argv[])
 
 //	getchar();
 	printf("start...\n");
-	pthread_t sniffer_thread;
-	pthread_t queue_thread;
 	
-	if( pthread_create( &sniffer_thread , NULL ,  read_thread , (void*) global_socket) < 0)
+	if( pthread_create( &pread_thread , NULL ,  read_thread , (void*) global_socket) < 0)
 	{
 		perror("could not create thread");
 		return 1;
@@ -290,9 +302,15 @@ int main(int argc, char *argv[])
 	// send the client name to the server 
 	send_msg(30, client_name, 0, 0);
 
-	if(pthread_join(sniffer_thread, NULL) != 0)
+
+	while(close_program == 0)
 	{
-		perror("pthread_join sniffer_thread");
+		uSleep(1,0);
+	}
+	return 0;
+	if(pthread_join(pread_thread, NULL) != 0)
+	{
+		perror("pthread_join pread_thread");
 		exit(1);
 	}
 	if(pthread_join(queue_thread, NULL) != 0)
@@ -300,11 +318,7 @@ int main(int argc, char *argv[])
 		perror("pthread_join queue_thread");
 		exit(1);
 	}
-
-    close(global_socket);
-//	pthread_kill(sniffer_thread, 0);
-//	pthread_kill(queue_thread, 0);
-	printf("closing program\n");
+	printf("1 closing program\n");
     // close the socket
 }
 #if 1
