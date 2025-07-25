@@ -1,3 +1,4 @@
+#if 1
 #include <arpa/inet.h> // inet_addr()
 #include <netdb.h>
 #include <stdio.h>
@@ -57,7 +58,7 @@ int uSleep(time_t sec, long nanosec)
 
 	return 0;									  /* Return success */
 }
-
+#endif
 void func(void)
 {
     char buff[MAX];
@@ -160,11 +161,11 @@ void *read_thread(void *socket_desc)
 
 			memmove(tempx,tempx+1,msg_len);
 			//printf("\n");
-
+/*
 			for(i = 0;i < msg_len;i++)
 				printf("%02x ",tempx[i]);
-
-			printf("\n");
+*/
+//			printf("\n");
 		}
 	}
 

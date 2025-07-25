@@ -1,3 +1,4 @@
+#if 1
 #include<stdio.h>
 #include<string.h>	//strlen
 #include<stdlib.h>	//strlen
@@ -19,6 +20,7 @@ void *listen_thread(void *);
 void *send_thread(void *);
 void *read_queue_thread(void *);
 void *new_sock_thread(void *);
+void *timer_thread(void *);
 
 key_t main_key;
 struct msgqbuf msg;
@@ -61,7 +63,7 @@ int uSleep(time_t sec, long nanosec)
 
 	return 0;									  /* Return success */
 }
-
+#endif
 int main(int argc , char *argv[])
 {
 	int socket_desc ,  c;
@@ -72,6 +74,7 @@ int main(int argc , char *argv[])
 	int ret;
 	int i;
 	pthread_t sock_thread;
+	pthread_t time_thread;
 	//Create socket
 	no_threads = 0;
 	main_key = MAIN_QKEY;
@@ -98,6 +101,14 @@ int main(int argc , char *argv[])
 	listen(socket_desc , 3);
 
 	if( pthread_create( &sock_thread , NULL ,  new_sock_thread , (void*) socket_desc) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+
+	printf("test\n");
+
+	if( pthread_create( &time_thread , NULL ,  timer_thread , (void*) socket_desc) < 0)
 	{
 		perror("could not create thread");
 		return 1;
@@ -144,6 +155,7 @@ int main(int argc , char *argv[])
 	}
 */
 	pthread_kill(sock_thread, 0);
+	pthread_kill(time_thread, 0);
 	printf("done\n");
 
 	return 0;
@@ -375,6 +387,42 @@ void *read_queue_thread(void *socket_desc)
 	free(socket_desc);
 }
 
+void *timer_thread(void *socket_desc)
+{
+	char buff[30];
+	char buff2[30];
+	int n;
+	int val;
+	int cmd = 20;
+	int i;
+
+	strcpy(buff,"timer\0");
+
+//	sock = *(int*)socket_desc;
+	printf("timer thread started\n");
+	uSleep(5,0);
+	for(;;)
+	{
+		memset(buff2,0,sizeof(buff2));
+		uSleep(1,0);
+		for(i = 0;i < no_threads;i++)
+		{
+			if(pthreads_list[i].sock > 0)
+			{
+				printf("sock: %d\n", pthreads_list[i].sock);
+				val = i;
+				sprintf(buff2, "%s %d",buff, val);
+				printf("%s\n",buff2);
+				n = strlen(buff2);
+				send_msg(pthreads_list[i].sock, n, buff2, cmd);
+				uSleep(1,0);
+			}
+			uSleep(4,0);
+		}
+
+	}
+	free(socket_desc);
+}
 
 #if 1
 /*********************************************************************/
