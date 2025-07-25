@@ -21,11 +21,9 @@
 
 int main_qid;
 key_t main_key;
-struct msgqbuf msg;
-int msgtype = 1;
-static int close_program;
 
 void *read_thread(void *);
+void *send_queue_thread(void *);
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 
@@ -64,7 +62,6 @@ void func(void)
     char buff[MAX];
     int n;
 	int cmd = 44;
-	msg.mtype = msgtype;
 	int ret;
 	
     for (;;) 
@@ -93,17 +90,24 @@ void func(void)
     }
 }
 
-void *read_queue_thread(void *socket_desc)
+/****************************************************************************************/
+void *send_queue_thread(void *buff)
 {
-	msg.mtype = msgtype;
-	memset(msg.mtext,0,sizeof(msg.mtext));
+	struct msgqbuf msg;
+	int msgtype = 1;
 	printf("queue thread started\n");
 	ssize_t ret = 1;
+	UCHAR cmd;
+	int msg_len;
+	UCHAR dest = 0;
+	UCHAR tempx[100];
+	int i;
 	
 	for(;;)
 	{
+		memset(msg.mtext,0,sizeof(msg.mtext));
 		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
-//		printf("ret: %ld\n",ret);
+		printf("ret: %ld\n",ret);
 		if(ret == -1)
 		{
 			if(errno != ENOMSG)
@@ -113,10 +117,29 @@ void *read_queue_thread(void *socket_desc)
 				exit(EXIT_FAILURE);
 			}
 		}
-		printf("read queue thread: %s\n",msg.mtext);
+//		printf("read queue thread: %s\n",msg.mtext);
+		cmd = msg.mtext[0];
+		printf("cmd: %d\n",cmd);
+		// msg is low byte of msg_len 1st
+		// then high byte
+
+		msg_len = (int)msg.mtext[1];
+		msg_len |= (int)(msg.mtext[2] << 4);
+		memset(tempx,0,sizeof(tempx));
+		memcpy(tempx,msg.mtext + 3,msg_len);
+		printf("cmd: %d msg_len: %d\n",cmd, msg_len);
+		printf("%s\n",tempx);
+
+		for(i = 0;i < msg_len+3;i++)
+		{
+			printf("%02x ",msg.mtext[i]);
+		}
+
+		printf("\n");
 	}
 }
 
+/****************************************************************************************/
 void *read_thread(void *socket_desc)
 {
 	char tempx[200];
@@ -124,6 +147,8 @@ void *read_thread(void *socket_desc)
 	int ret;
 	UCHAR cmd;
 	int i;
+	struct msgqbuf msg;
+	msg.mtype = 1;
 
 	//Get the socket descriptor
 	int read_size;
@@ -166,32 +191,43 @@ void *read_thread(void *socket_desc)
 				printf("%02x ",tempx[i]);
 */
 //			printf("\n");
+			uSleep(1,0);
+			memset(msg.mtext,0,sizeof(msg.mtext));
+			msg.mtext[0] = cmd;
+			msg.mtext[1] = (UCHAR)msg_len;
+			msg.mtext[2] = (UCHAR)(msg_len >> 4);
+			memcpy(msg.mtext + 3,tempx,msg_len);
+//			for(i = 0;i < msg_len + 3;i++)
+//				printf("%02x ",msg.mtext[i]);
+//			printf("\n");
+			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+			if(ret == -1)
+			{
+				perror("msgsnd error");
+			}
+			printf("msgsnd ret: %d\n",ret);
 		}
 	}
 
 	if(msg_len == 0)
 	{
 		puts("Client disconnected");
-		fflush(stdout);
-		printf("done\n");
 	}
 	else if(msg_len == -1)
 	{
 		perror("recv failed");
 	}
 		
-	close_program = 1;
 	return 0;
 }
-
-
+/****************************************************************************************/
 int main(int argc, char *argv[])
 {
     int sockfd, connfd;
     struct sockaddr_in servaddr, cli;
 	char buff[200];
+	char buff2[20];
 	int n = 0;
-	close_program = 0;
 	char client_name[30];
 
 	main_qid = msgget(main_key, IPC_CREAT | 0666);
@@ -201,6 +237,7 @@ int main(int argc, char *argv[])
 		printf("must enter the name of the client so it can be sent to the server\n");
 		exit(1);
 	}
+	strcpy(buff2,"test send\0");
 	memset(client_name, 0, sizeof(client_name));
 	printf("%s\n",argv[1]);
 	strcpy(client_name, argv[1]);
@@ -243,21 +280,30 @@ int main(int argc, char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
-/*
-	if( pthread_create( &queue_thread , NULL ,  read_queue_thread , (void*) global_socket) < 0)
+
+	if( pthread_create( &queue_thread , NULL ,  send_queue_thread , (void*) buff2) < 0)
 	{
 		perror("could not create thread");
 		return 1;
 	}
-*/;
+
 	// send the client name to the server 
 	send_msg(30, client_name, 0, 0);
 
-    func();
+	if(pthread_join(sniffer_thread, NULL) != 0)
+	{
+		perror("pthread_join sniffer_thread");
+		exit(1);
+	}
+	if(pthread_join(queue_thread, NULL) != 0)
+	{
+		perror("pthread_join queue_thread");
+		exit(1);
+	}
 
     close(global_socket);
-	pthread_kill(sniffer_thread, 0);
-//	pthread_kill(read_queue_thread, 0);
+//	pthread_kill(sniffer_thread, 0);
+//	pthread_kill(queue_thread, 0);
 	printf("closing program\n");
     // close the socket
 }
@@ -301,8 +347,6 @@ int get_msg(void)
 
 	return len;
 }
-
-/*********************************************************************/
 /*********************************************************************/
 // send the preamble, msg len, msg_type & dest (dest is index into client table)
 void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)

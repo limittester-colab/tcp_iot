@@ -21,6 +21,7 @@ typedef struct
 	key_t main_key;
 	int qid;
 	int sock;
+	char client_name[30];
 }THREADS;
 
 // global variables
@@ -39,7 +40,7 @@ REAL_BANKS real_banks[40];
 #define MAIN_QKEY				1303
 #define PROTOPORT				5193				  /* default protocol port number */
 #define QLEN					6					  /* size of request queue        */
-
+#define MAX_THREADS				5
 int uSleep(time_t sec, long nanosec);
 
 #define _1SEC	 	1000000 

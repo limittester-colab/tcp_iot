@@ -21,13 +21,14 @@ void *send_thread(void *);
 void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 void *timer_thread(void *);
+void *tester_thread(void *);
 
 key_t main_key;
 struct msgqbuf msg;
 int msgtype = 1;
 int no_threads;
 
-THREADS pthreads_list[5];
+THREADS pthreads_list[MAX_THREADS];
 
 void add_client_queue(char client_name)
 {
@@ -75,6 +76,7 @@ int main(int argc , char *argv[])
 	int i;
 	pthread_t sock_thread;
 	pthread_t time_thread;
+	pthread_t test_thread;
 	//Create socket
 	no_threads = 0;
 	main_key = MAIN_QKEY;
@@ -105,7 +107,14 @@ int main(int argc , char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
+	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) socket_desc) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
 
+
+/*
 	printf("test\n");
 
 	if( pthread_create( &time_thread , NULL ,  timer_thread , (void*) socket_desc) < 0)
@@ -113,7 +122,7 @@ int main(int argc , char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
-
+*/
 /*
 	if (new_socket<0)
 	{
@@ -132,32 +141,11 @@ int main(int argc , char *argv[])
 			perror("join failed on listen_thread join");
 			exit(1);
 		}
-		pthread_kill(pthreads_list[i].read_queue_thread,0);
+//		pthread_kill(pthreads_list[i].read_queue_thread,0);
 	}
-
-//	printf("test1\n");
-/*
-	for(i = 0;i < no_threads;i++)
-	{
-		printf("wait for listen_thread to quit\n");
-		if(pthread_join(pthreads_list[i].listen_thread, NULL) != 0)
-		{
-			perror("join failed on listen_thread join");
-			exit(1);
-		}
-		printf("wait for read_queue_thread to quit\n");
-		if(pthread_join(pthreads_list[i].read_queue_thread, NULL) != 0)
-		{
-			perror("join failed on read_queue_thread join");
-			exit(1);
-		}
-		printf("quit thread %d\n",pthreads_list[i].sock);
-	}
-*/
 	pthread_kill(sock_thread, 0);
-	pthread_kill(time_thread, 0);
+//	pthread_kill(time_thread, 0);
 	printf("done\n");
-
 	return 0;
 }
 
@@ -172,10 +160,6 @@ void *new_sock_thread(void *socket_desc)
 	c = sizeof(struct sockaddr_in);
 	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
-//		puts("Connection accepted");
-		//Reply to the client
-		//message = "Hello Client , I have received your connection. And now I will assign a handler for you\n";
-		//write(new_socket , message , strlen(message));
 		printf("no_threads: %d\n",no_threads);
 		new_sock = malloc(1);
 		*new_sock = new_socket;
@@ -190,12 +174,13 @@ void *new_sock_thread(void *socket_desc)
 			perror("could not create sniffer_thread");
 			return 1;
 		}
-
+/*
 		if( pthread_create( &(pthreads_list[no_threads].read_queue_thread) , NULL ,  read_queue_thread , (void*) new_sock) < 0)
 		{
 			perror("could not create thread");
 			return 1;
 		}
+*/
 		pthreads_list[no_threads].sock = new_socket;
 		pthreads_list[no_threads].main_key = main_key + no_threads;
 		pthreads_list[no_threads].qid = msgget(pthreads_list[no_threads].main_key, IPC_CREAT | 0666);
@@ -226,7 +211,6 @@ void *listen_thread(void *socket_desc)
 	char client_name[30];
 	CLIENT_NAME *cl;
 	msg.mtype = msgtype;
-	int skip = 0;
 	int index = -1;
 	int pindex;
 
@@ -243,7 +227,9 @@ void *listen_thread(void *socket_desc)
 	{
 		if(index < 0)
 		{
-			while(sock != pthreads_list[index].sock && index++ > no_threads)
+			index = 0;
+			while(sock != pthreads_list[index].sock && index > MAX_THREADS)
+				index++;
 			printf("index: %d sock: %d\n",index,sock);
 			pindex = index;
 		}
@@ -282,9 +268,7 @@ void *listen_thread(void *socket_desc)
 			printf("this client is called: %s\n",client_name);
 //			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
 			//add_client_queue(client_name);
-		}else
-		{
-			printf("client name: %s\n",client_name);
+			strcpy(pthreads_list[index].client_name,client_name);
 		}
 /*
 		for(i = 0;i < msg_len;i++)
@@ -292,7 +276,7 @@ void *listen_thread(void *socket_desc)
 */
 		printf("\n");
 
-//		if(skip)
+/*
 		if(msg_len > 0)
 		{
 			printf("send msg\n");
@@ -306,8 +290,8 @@ void *listen_thread(void *socket_desc)
 				perror("msgsnd error");
 			}
 			printf("msgsnd ret: %d\n",ret);
-			skip = 1;
 		}
+*/
 		index = 0;
 	}
 
@@ -326,7 +310,7 @@ void *listen_thread(void *socket_desc)
 
 	//Free the socket pointer
 
-	pthread_kill(pthreads_list[pindex].read_queue_thread,0);
+//	pthread_kill(pthreads_list[pindex].read_queue_thread,0);
 	free(socket_desc);
 	pthread_exit(NULL);
 
@@ -395,12 +379,14 @@ void *timer_thread(void *socket_desc)
 	int val;
 	int cmd = 20;
 	int i;
+	int j;
 
 	strcpy(buff,"timer\0");
 
 //	sock = *(int*)socket_desc;
 	printf("timer thread started\n");
 	uSleep(5,0);
+	j = 0;
 	for(;;)
 	{
 		memset(buff2,0,sizeof(buff2));
@@ -411,10 +397,11 @@ void *timer_thread(void *socket_desc)
 			{
 				printf("sock: %d\n", pthreads_list[i].sock);
 				val = i;
-				sprintf(buff2, "%s %d",buff, val);
+				sprintf(buff2, "%s %d %d",buff, val,j);
 				printf("%s\n",buff2);
 				n = strlen(buff2);
 				send_msg(pthreads_list[i].sock, n, buff2, cmd);
+				j++;
 				uSleep(1,0);
 			}
 			uSleep(4,0);
@@ -423,6 +410,57 @@ void *timer_thread(void *socket_desc)
 	}
 	free(socket_desc);
 }
+
+void *tester_thread(void *socket_desc)
+{
+	char buff[30];
+	int key;
+	int msg_len;
+	UCHAR cmd;
+	int sock = 4;
+//	int sock = *(int *)socket_desc;
+//	printf("sock: %d\n",sock);
+//	for(;;)
+//		uSleep(1,0);
+
+	do
+	{
+		key = getc(stdin);
+		printf("key: %c\n",key);
+		switch(key)
+		{
+			case 'a':
+				strcpy(buff,"hello text\0");
+				msg_len = strlen(buff);
+				cmd = 'A';
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+
+			case 'b':
+				strcpy(buff,"asdf test\0");
+				msg_len = strlen(buff);
+				cmd = 'B';
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'c':
+				strcpy(buff,"asdf tester 1234\0");
+				msg_len = strlen(buff);
+				cmd = 'C';
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'd':
+				strcpy(buff,"what's up test\0");
+				msg_len = strlen(buff);
+				cmd = 'D';
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+
+		}
+		printf("%s\n",buff);
+
+	}while(key != 'q' && key != 'Q');
+}
+
 
 #if 1
 /*********************************************************************/
