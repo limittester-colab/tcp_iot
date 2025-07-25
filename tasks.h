@@ -18,6 +18,8 @@ typedef struct
 {
 	pthread_t listen_thread;
 	pthread_t read_queue_thread;
+	key_t main_key;
+	int qid;
 	int sock;
 }THREADS;
 
@@ -39,8 +41,6 @@ REAL_BANKS real_banks[40];
 #define QLEN					6					  /* size of request queue        */
 
 int uSleep(time_t sec, long nanosec);
-int main_qid;
-key_t main_key;
 
 #define _1SEC	 	1000000 
 #define _100MS		100000 	

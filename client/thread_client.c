@@ -86,7 +86,7 @@ void func(void)
 			perror("msgsnd error");
 		}
 */
-		printf("ret: %d\n",ret);
+//		printf("ret: %d\n",ret);
 		if(n == 0)
 			return;
     }
@@ -102,7 +102,7 @@ void *read_queue_thread(void *socket_desc)
 	for(;;)
 	{
 		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
-		printf("ret: %ld\n",ret);
+//		printf("ret: %ld\n",ret);
 		if(ret == -1)
 		{
 			if(errno != ENOMSG)
@@ -132,7 +132,7 @@ void *read_thread(void *socket_desc)
 	msg_len = 1;
 	while(msg_len > 0)
 	{
-		printf("sock: %d\n",global_socket);
+//		printf("sock: %d\n",global_socket);
 		msg_len = get_msg();
 		if(msg_len > 0)
 		{
@@ -279,7 +279,7 @@ int get_msg(void)
 
 	UCHAR preamble[10];
 	ret = recv_tcp(preamble,8,1);
-	printf("ret: %d\n",ret);
+//	printf("ret: %d\n",ret);
 	if(ret < 0)
 	{
 		printf("ret < 0");

@@ -20,7 +20,6 @@ void *send_thread(void *);
 void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 
-int main_qid;
 key_t main_key;
 struct msgqbuf msg;
 int msgtype = 1;
@@ -75,9 +74,7 @@ int main(int argc , char *argv[])
 	pthread_t sock_thread;
 	//Create socket
 	no_threads = 0;
-
-	main_qid = msgget(main_key, IPC_CREAT | 0666);
-
+	main_key = MAIN_QKEY;
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
 	if (socket_desc == -1)
 	{
@@ -106,16 +103,16 @@ int main(int argc , char *argv[])
 		return 1;
 	}
 
-/*	
+/*
 	if (new_socket<0)
 	{
 		perror("accept failed");
 		return 1;
 	}
 */
-	printf("total no_threads 1: %d\n",no_threads);
+//	printf("total no_threads 1: %d\n",no_threads);
 	while(no_threads < 1);
-	printf("total no_threads 2: %d\n",no_threads);
+//	printf("total no_threads 2: %d\n",no_threads);
 
 	for(i = 0;i < no_threads;i++)
 	{
@@ -127,7 +124,7 @@ int main(int argc , char *argv[])
 		pthread_kill(pthreads_list[i].read_queue_thread,0);
 	}
 
-	printf("test1\n");
+//	printf("test1\n");
 /*
 	for(i = 0;i < no_threads;i++)
 	{
@@ -148,34 +145,9 @@ int main(int argc , char *argv[])
 */
 	pthread_kill(sock_thread, 0);
 	printf("done\n");
-	
-	return 0;
-}
 
-/*
- * This will handle connection for each client
- * */
-#if 0
-void *listen_thread(void *socket_desc)
-{
-	//Get the socket descriptor
-	int sock = *(int*)socket_desc;
-	
-	char *message;
-	
-	//Send some messages to the client
-	message = "Greetings! I am your connection handler\n";
-	write(sock , message , strlen(message));
-	
-	message = "Its my duty to communicate with you";
-	write(sock , message , strlen(message));
-	
-	//Free the socket pointer
-	free(socket_desc);
-	
 	return 0;
 }
-#endif
 
 void *new_sock_thread(void *socket_desc)
 {
@@ -188,11 +160,11 @@ void *new_sock_thread(void *socket_desc)
 	c = sizeof(struct sockaddr_in);
 	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
-		puts("Connection accepted");
+//		puts("Connection accepted");
 		//Reply to the client
 		//message = "Hello Client , I have received your connection. And now I will assign a handler for you\n";
 		//write(new_socket , message , strlen(message));
-
+		printf("no_threads: %d\n",no_threads);
 		new_sock = malloc(1);
 		*new_sock = new_socket;
 
@@ -206,16 +178,17 @@ void *new_sock_thread(void *socket_desc)
 			perror("could not create sniffer_thread");
 			return 1;
 		}
-		pthreads_list[no_threads].sock = new_socket;
 
 		if( pthread_create( &(pthreads_list[no_threads].read_queue_thread) , NULL ,  read_queue_thread , (void*) new_sock) < 0)
 		{
 			perror("could not create thread");
 			return 1;
 		}
-		pthreads_list[no_threads].sock = new_sock;
+		pthreads_list[no_threads].sock = new_socket;
+		pthreads_list[no_threads].main_key = main_key + no_threads;
+		pthreads_list[no_threads].qid = msgget(pthreads_list[no_threads].main_key, IPC_CREAT | 0666);
+		printf("%d %d %d\n",pthreads_list[no_threads].qid, pthreads_list[no_threads].main_key, pthreads_list[no_threads].sock);
 		no_threads++;
-
 /*
 		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
 		{
@@ -224,7 +197,7 @@ void *new_sock_thread(void *socket_desc)
 		}
 */
 		//Now join the thread , so that we dont terminate before the thread
-		puts("Handler assigned");
+//		puts("Handler assigned");
 //		pthread_join( sniffer_thread , NULL);
 	}
 	
@@ -242,11 +215,13 @@ void *listen_thread(void *socket_desc)
 	CLIENT_NAME *cl;
 	msg.mtype = msgtype;
 	int skip = 0;
+	int index = -1;
+	int pindex;
 
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
 	int read_size;
-	
+
 	//Receive a message from client
 //	printf("start %d\n", sock);
 	msg_len = 1;
@@ -254,6 +229,13 @@ void *listen_thread(void *socket_desc)
 
 	while(msg_len > 0)
 	{
+		if(index < 0)
+		{
+			while(sock != pthreads_list[index].sock && index++ > no_threads)
+			printf("index: %d sock: %d\n",index,sock);
+			pindex = index;
+		}
+
 //		printf("sock: %d\n",sock);
 		msg_len = get_msg(sock);
 //		printf("msg_len: %d\n",msg_len);
@@ -297,28 +279,31 @@ void *listen_thread(void *socket_desc)
 			printf("%02x ",tempx[i]);
 */
 		printf("\n");
-/*
-		if(skip)
+
+//		if(skip)
+		if(msg_len > 0)
 		{
 			printf("send msg\n");
 
 			memset(msg.mtext,0,sizeof(msg.mtext));
 			memcpy(msg.mtext,tempx,msg_len);
 			ret = 0;
-			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+			ret = msgsnd(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)
 			{
 				perror("msgsnd error");
 			}
-			//printf("ret: %d\n",ret);
+			printf("msgsnd ret: %d\n",ret);
 			skip = 1;
 		}
-*/
+		index = 0;
 	}
 
 	if(msg_len == 0)
 	{
 		puts("Client disconnected");
+		pthreads_list[pindex].sock = -1;
+		pthreads_list[pindex].qid = -1;
 //		fflush(stdout);
 	}
 
@@ -326,18 +311,13 @@ void *listen_thread(void *socket_desc)
 	{
 		perror("recv failed");
 	}
-		
+
 	//Free the socket pointer
+
+	pthread_kill(pthreads_list[pindex].read_queue_thread,0);
 	free(socket_desc);
-	for(i = 0;i < no_threads;i++)
-	{
-		if(socket_desc == pthreads_list[i].sock)
-		{
-			pthread_kill(pthreads_list[i].read_queue_thread,0);
-		}
-	}
 	pthread_exit(NULL);
-	
+
 	return 0;
 }
 
@@ -366,10 +346,19 @@ void *read_queue_thread(void *socket_desc)
 	memset(msg.mtext,0,sizeof(msg.mtext));
 	printf("queue thread started\n");
 	ssize_t ret = 1;
-	
-	do 
+	int index = 0;
+	int qid;
+	int sock = *(int*)socket_desc;
+
+	do
 	{
-		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
+		index = 0;
+		while(pthreads_list[index].sock != sock && index < no_threads)
+		{
+			printf("index: %d sock: %d\n", index, pthreads_list[index].sock);
+			index++;
+		}
+		ret = msgrcv(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
 		if(ret == -1)
 		{
 			if(errno != ENOMSG)
@@ -378,11 +367,12 @@ void *read_queue_thread(void *socket_desc)
 				printf("msgrcv error\n");
 				exit(EXIT_FAILURE);
 			}
-			printf("ret: %ld %d\n",ret,errno);
+//			printf("ret: %ld %d\n",ret,errno);
 		}
 		printf("read queue thread: %s\n",msg.mtext);
 	}
 	while(ret > 0);
+	free(socket_desc);
 }
 
 
