@@ -22,10 +22,9 @@ void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 void *timer_thread(void *);
 void *tester_thread(void *);
+pthread_t cmd_task_thread;
+pthread_t pbasic_controls_task_thread;
 
-key_t main_key;
-struct msgqbuf msg;
-int msgtype = 1;
 int no_threads;
 
 THREADS pthreads_list[MAX_THREADS];
@@ -33,36 +32,6 @@ THREADS pthreads_list[MAX_THREADS];
 void add_client_queue(char client_name)
 {
 	printf("client name: %s\n",client_name);
-}
-
-int uSleep(time_t sec, long nanosec)
-{
-/* Setup timespec */
-	struct timespec req;
-	req.tv_sec = sec;
-	req.tv_nsec = nanosec;
-
-/* Loop until we've slept long enough */
-	do
-	{
-/* Store remainder back on top of the original required time */
-		if( 0 != nanosleep( &req, &req ) )
-		{
-/* If any error other than a signal interrupt occurs, return an error */
-			if(errno != EINTR)
-			{
-				printf("uSleep error\0");
-//             return -1;
-			}
-		}
-		else
-		{
-/* nanosleep succeeded, so exit the loop */
-			break;
-		}
-	} while ( req.tv_sec > 0 || req.tv_nsec > 0 );
-
-	return 0;									  /* Return success */
 }
 #endif
 int main(int argc , char *argv[])
@@ -74,12 +43,17 @@ int main(int argc , char *argv[])
 	char tempx[30];
 	int ret;
 	int i;
+	int test;
 	pthread_t sock_thread;
 	pthread_t time_thread;
 	pthread_t test_thread;
 	//Create socket
 	no_threads = 0;
-	main_key = MAIN_QKEY;
+	basic_controls_key = BASIC_CONTROLS_KEY;
+	main_key = MAIN_KEY;
+	main_qid = msgget(main_key, IPC_CREAT | 0666);
+	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
+
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
 	if (socket_desc == -1)
 	{
@@ -108,6 +82,16 @@ int main(int argc , char *argv[])
 		return 1;
 	}
 	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) socket_desc) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+	if( pthread_create( &cmd_task_thread , NULL ,  get_host_cmd_task , (void*) test) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+	if( pthread_create( &pbasic_controls_task_thread , NULL ,  basic_controls_task , (void*) test) < 0)
 	{
 		perror("could not create thread");
 		return 1;
@@ -202,6 +186,8 @@ void *new_sock_thread(void *socket_desc)
 
 void *listen_thread(void *socket_desc)
 {
+	struct msgqbuf msg;
+	int msgtype = 1;
 	char tempx[200];
 	int msg_len;
 	int ret;
@@ -276,7 +262,6 @@ void *listen_thread(void *socket_desc)
 */
 		printf("\n");
 
-/*
 		if(msg_len > 0)
 		{
 			printf("send msg\n");
@@ -291,7 +276,6 @@ void *listen_thread(void *socket_desc)
 			}
 			printf("msgsnd ret: %d\n",ret);
 		}
-*/
 		index = 0;
 	}
 
@@ -338,6 +322,8 @@ void *send_thread(void *socket_desc)
 
 void *read_queue_thread(void *socket_desc)
 {
+	struct msgqbuf msg;
+	int msgtype = 1;
 	msg.mtype = msgtype;
 	memset(msg.mtext,0,sizeof(msg.mtext));
 	printf("queue thread started\n");

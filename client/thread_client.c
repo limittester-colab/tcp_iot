@@ -19,79 +19,15 @@
 #define PORT 5193
 #define SA struct sockaddr
 
-int main_qid;
-key_t main_key;
-static int close_program;
-
 void *read_thread(void *);
 void *send_queue_thread(void *);
 pthread_t pread_thread;
 pthread_t queue_thread;
+pthread_t cmd_task_thread;
+pthread_t pbasic_controls_task_thread;
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
-
-int uSleep(time_t sec, long nanosec)
-{
-/* Setup timespec */
-	struct timespec req;
-	req.tv_sec = sec;
-	req.tv_nsec = nanosec;
-
-/* Loop until we've slept long enough */
-	do
-	{
-/* Store remainder back on top of the original required time */
-		if( 0 != nanosleep( &req, &req ) )
-		{
-/* If any error other than a signal interrupt occurs, return an error */
-			if(errno != EINTR)
-			{
-				printf("uSleep error\0");
-//             return -1;
-			}
-		}
-		else
-		{
-/* nanosleep succeeded, so exit the loop */
-			break;
-		}
-	} while ( req.tv_sec > 0 || req.tv_nsec > 0 );
-
-	return 0;									  /* Return success */
-}
 #endif
-void func(void)
-{
-    char buff[MAX];
-    int n;
-	int cmd = 44;
-	int ret;
-	
-    for (;;) 
-	{
-        bzero(buff, sizeof(buff));
-        //printf("Enter the string : ");
-        n = 0;
-        while ((buff[n++] = getchar()) != '\n');
-		
-		n--;
-		printf("msg_len: %d\n",n);
-		send_msg(n, buff,cmd, 0);
-/*
-		memset(msg.mtext,0,sizeof(msg.mtext));
-		memcpy(msg.mtext,buff,n);
-		ret = 0;
-		ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
-		if(ret == -1)
-		{
-			perror("msgsnd error");
-		}
-*/
-//		printf("ret: %d\n",ret);
-		if(n == 0)
-			return;
-    }
-}
 
 /****************************************************************************************/
 void *send_queue_thread(void *buff)
@@ -204,6 +140,7 @@ void *read_thread(void *socket_desc)
 				printf("%02x ",tempx[i]);
 */
 //			printf("\n");
+
 			uSleep(1,0);
 			memset(msg.mtext,0,sizeof(msg.mtext));
 			msg.mtext[0] = cmd;
@@ -213,7 +150,7 @@ void *read_thread(void *socket_desc)
 //			for(i = 0;i < msg_len + 3;i++)
 //				printf("%02x ",msg.mtext[i]);
 //			printf("\n");
-			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+			ret = msgsnd(basic_controls_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)
 			{
 				perror("msgsnd error");
@@ -243,8 +180,12 @@ int main(int argc, char *argv[])
 	int n = 0;
 	char client_name[30];
 	close_program = 0;
+	int test;
 
+	basic_controls_key = BASIC_CONTROLS_KEY;
+	main_key = MAIN_KEY;
 	main_qid = msgget(main_key, IPC_CREAT | 0666);
+	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
 
 	if(argc != 2)
 	{
@@ -292,8 +233,20 @@ int main(int argc, char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
-
+/*
 	if( pthread_create( &queue_thread , NULL ,  send_queue_thread , (void*) buff2) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+*/
+	if( pthread_create( &cmd_task_thread , NULL ,  get_host_cmd_task , (void*) test) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+
+	if( pthread_create( &pbasic_controls_task_thread , NULL ,  basic_controls_task , (void*) test) < 0)
 	{
 		perror("could not create thread");
 		return 1;
@@ -301,7 +254,6 @@ int main(int argc, char *argv[])
 
 	// send the client name to the server 
 	send_msg(30, client_name, 0, 0);
-
 
 	while(close_program == 0)
 	{

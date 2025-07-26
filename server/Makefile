@@ -114,10 +114,30 @@ ioports.o: ioports.c ioports.h
 thread_server.o: thread_server.c
 	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c thread_server.c
 
-server: thread_server.o ioports.o nbus.o
+cmd_tasks.o: cmd_tasks.c tasks.h
+	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c cmd_tasks.c
+
+tasks.o: tasks.c tasks.h
+	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c tasks.c
+
+ollist_threads_rw.o: queue/ollist_threads_rw.c queue/ollist_threads_rw.h
+	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c queue/ollist_threads_rw.c
+
+rdwr.o: queue/rdwr.c queue/rdwr.h
+	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c queue/rdwr.c
+
+config_file.o: cs_client/config_file.c  queue/ollist_threads_rw.h
+	${CC} ${CC_FLAGS} ${INCLUDE_PATHS} -c cs_client/config_file.c
+
+load_cmds.o: load_cmds.c
+	${CC} ${CC_FLAGS} ${INCLUDE_PATHS} -c load_cmds.c
+
+ollist_threads_rw.o: queue/ollist_threads_rw.c queue/ollist_threads_rw.h
+	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c queue/ollist_threads_rw.c
+
+server: thread_server.o ioports.o nbus.o tasks.o cmd_tasks.o load_cmds.o ollist_threads_rw.o rdwr.o config_file.o
 # if we don't use -static then the target should have: libpthread.so.0 in the /lib directory
-	${CC} -static -pthread thread_server.o ioports.o nbus.o -o server -lm
+	${CC} -static -pthread thread_server.o ioports.o nbus.o cmd_tasks.o tasks.o load_cmds.o ollist_threads_rw.o rdwr.o config_file.o -o server -lm
 
 clean :
 	rm -f *.o *~ *# core  server
-

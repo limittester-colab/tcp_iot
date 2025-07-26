@@ -37,7 +37,8 @@ REAL_BANKS real_banks[40];
 #define PTIME_SLICE             4
 #define PFIFO                   5
 #define INHERIT                 6
-#define MAIN_QKEY				1303
+#define MAIN_KEY				1303
+#define BASIC_CONTROLS_KEY		1400
 #define PROTOPORT				5193				  /* default protocol port number */
 #define QLEN					6					  /* size of request queue        */
 #define MAX_THREADS				5
@@ -57,6 +58,15 @@ int uSleep(time_t sec, long nanosec);
 #define _500MS		500000 	
 #define _50MS		50000 	
 #define _5MS		5000 	
+
+static int main_qid;
+static key_t main_key;
+static int basic_controls_qid;
+static key_t basic_controls_key;
+static int close_program;
+static int this_client_id;
+UCHAR get_host_cmd_task(int test);
+UCHAR basic_controls_task(int test);
 
 #ifndef SERVER_146
 #warning "SERVER_146 not defined"
