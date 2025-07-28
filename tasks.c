@@ -45,6 +45,20 @@ pthread_mutex_t     msg_queue_lock=PTHREAD_MUTEX_INITIALIZER;
 int total_count;
 
 static UCHAR check_inputs(int index, int test);
+UCHAR inportstatus[NUM_DATA_RECS];
+
+static CMD_STRUCT cmd_array[];
+extern REAL_BANKS real_banks[40];
+
+enum client_list	// if adding to this list, change MAX_CLIENTS above 
+{
+	_158,			// WINDOWS-11A (runs on Windows machine)
+	_154,			// Cabin
+	_147,			// Testbench
+	_243,			// aux_client (runs on a PC linux box)
+	_151,			// extra TS-4600 card
+	_SERVER			// Garage (146)
+}CLIENT_LIST2;
 
 ollist_t oll;
 /*
@@ -67,7 +81,6 @@ static int no_serial_buff;
 char password[PASSWORD_SIZE];
 
 static int serial_rec;
-static void set_output(O_DATA *otp, int onoff);
 static int mask2int(UCHAR mask);
 extern int shutdown_all;
 static int raw_data_array[RAW_DATA_ARRAY_SIZE];
@@ -160,8 +173,6 @@ enum output_types
 	BENCH_5V_2a,
 	BENCH_3V3_1a,
 	BENCH_3V3_2a,
-	TEST_OUTPUT1,		// these are unused 
-
 	BENCH_LIGHT1a,
 	BENCH_LIGHT2a,
 	BATTERY_HEATERa,
@@ -380,7 +391,7 @@ UCHAR monitor_input_task(int test)
 	while(TRUE)
 	{
 		uSleep(1,0);
-		if(shutdown_all)
+		if(close_program)
 			return 0;
 	}
 #endif
@@ -391,7 +402,7 @@ UCHAR monitor_input_task(int test)
 	while(TRUE)
 	{
 		uSleep(1,0);
-		if(shutdown_all)
+		if(close_program)
 			return 0;
 	}
 #endif
@@ -550,37 +561,42 @@ int change_input(int index, int onoff)
 int change_output(int index, int onoff)
 {
 	int bank;
-	char tempx[10];
-
+	int index2;
+	
 #ifndef USE_CARDS
 	printf("not using cards\n");
 	return 0;
 #endif
 
 	//printf("change output: %d\n",index);
-	pthread_mutex_lock( &io_mem_lock);
+//	pthread_mutex_lock( &io_mem_lock);
 
 	bank = real_banks[index].bank;
-	index = real_banks[index].index;
-	//printf("bank: %d index: %d\r\n",bank,index);
+	index2 = real_banks[index].index;
 	// for this application, there's only 1 card and the 2nd address
 	// doesn't work, so bank 0 is the 1st 8 bits and bank 2 is the 
 	// last 4 - 280 & 282 (281 doesn't work)
+//printf("%d %d %d\n",onoff, index, bank);
+
+	printf("bank: %d index: %d index2 %d\r\n",bank,index, index2);
+#ifndef SERVER_146
 	switch(bank)
 	{
 		case 0:
-			OutPortA(onoff, index);			  // 0-7
+			OutPortA(onoff, index2);			  // 0-7
 			break;
 		case 1:
-			OutPortB(onoff, index);			  // 0-7
+			OutPortB(onoff, index2);			  // 0-7
 			break;
 		case 2:
-			OutPortC(onoff, index);			  // 0-3
+			OutPortC(onoff, index2);			  // 0-3
 			break;
 		default:
 			break;
 	}
-	pthread_mutex_unlock(&io_mem_lock);
+#endif
+
+//	pthread_mutex_unlock(&io_mem_lock);
 	//printf("change output: %d %d\r\n",index,onoff);
 
 //	sprintf(tempx,"%d %d %d", bank, index, onoff);
@@ -590,27 +606,7 @@ int change_output(int index, int onoff)
 }
 #endif
 /*********************************************************************/
-void add_msg_queue(UCHAR cmd, UCHAR onoff)
-{
-	struct msgqbuf msg;
-	int msgtype = 1;
-	msg.mtype = msgtype;
-	msg.mtext[0] = cmd;
-	msg.mtext[1] = onoff;
-	pthread_mutex_lock(&msg_queue_lock);
-
-	if (msgsnd(basic_controls_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR) == -1) 
-	{
-		// keep getting "Invalid Argument" - cause I didn't set the mtype
-		perror("msgsnd error");
-		exit(EXIT_FAILURE);
-	}
-
-	pthread_mutex_unlock(&msg_queue_lock);
-//	printf("add: %d %x\r\n",msg_queue_ptr,cmd);
-}
-/*********************************************************************/
-UCHAR basic_controls_task(int test)
+UCHAR basic_controls_task(int *test)
 {
 	int i,j;
 	UCHAR onoff;
@@ -656,8 +652,8 @@ UCHAR basic_controls_task(int test)
 		cmd = msg.mtext[0];
 		onoff = msg.mtext[1];
 		
-		//printf("basic controls: ");
-		//print_cmd(cmd);
+		printf("basic controls: ");
+		print_cmd(cmd);
 		//printf("%d\n",onoff);
 		//usleep(_5MS);
 

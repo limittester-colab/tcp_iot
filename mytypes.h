@@ -23,13 +23,7 @@ typedef unsigned long ULONG;
 #define NO_CMDS 78
 #define NO_CLLIST_RECS NUM_DATA_RECS
 #define PASSWORD_SIZE 10
-UCHAR inportstatus[NUM_DATA_RECS];
 // format of message queue (msgsnd & msgrcv)
-struct msgqbuf 
-{
-	long mtype;
-	UCHAR mtext[SERIAL_BUFF_SIZE];
-};
 
 typedef struct
 {
@@ -37,36 +31,7 @@ typedef struct
 	char cmd_str[30];
 } CMD_STRUCT;
 
-typedef struct
-{
-	int socket;
-	char ip[4];
-	char label[30];
-	int type;
-	key_t qkey;
-	int qid;
-	int task_id;
-}CLIENT_TABLE;
-
 //CLIENT_TABLE client_table[MAX_CLIENTS];
-
-enum client_types
-{
-	WINDOWS_CLIENT,
-	TS_CLIENT,
-	TS_AUX,
-	TS_SERVER
-}CLIENT_TYPES;
-
-enum client_list	// if adding to this list, change MAX_CLIENTS above 
-{
-	_158,			// WINDOWS-11A (runs on Windows machine)
-	_154,			// Cabin
-	_147,			// Testbench
-	_243,			// aux_client (runs on a PC linux box)
-	_151,			// extra TS-4600 card
-	_SERVER			// Garage (146)
-}CLIENT_LIST;
 
 #define OLABELSIZE 30
 #define CLABELSIZE 15

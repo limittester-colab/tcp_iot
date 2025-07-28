@@ -7,9 +7,11 @@
 #include<unistd.h>	//write
 #include<pthread.h> //for threading , link with lpthread
 #include <errno.h>
+#include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
+#include "cmd_types.h"
 #include "mytypes.h"
 #include "tasks.h"
 #define MAX 80
@@ -86,6 +88,7 @@ int main(int argc , char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
+/*
 	if( pthread_create( &cmd_task_thread , NULL ,  get_host_cmd_task , (void*) test) < 0)
 	{
 		perror("could not create thread");
@@ -96,7 +99,7 @@ int main(int argc , char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
-
+*/
 
 /*
 	printf("test\n");
@@ -186,8 +189,8 @@ void *new_sock_thread(void *socket_desc)
 
 void *listen_thread(void *socket_desc)
 {
-	struct msgqbuf msg;
 	int msgtype = 1;
+	struct msgqbuf msg;
 	char tempx[200];
 	int msg_len;
 	int ret;
@@ -199,6 +202,7 @@ void *listen_thread(void *socket_desc)
 	msg.mtype = msgtype;
 	int index = -1;
 	int pindex;
+	int skip;
 
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
@@ -208,6 +212,7 @@ void *listen_thread(void *socket_desc)
 //	printf("start %d\n", sock);
 	msg_len = 1;
 	memset(client_name, 0, sizeof(client_name));
+	skip = 0;
 
 	while(msg_len > 0)
 	{
@@ -262,19 +267,20 @@ void *listen_thread(void *socket_desc)
 */
 		printf("\n");
 
-		if(msg_len > 0)
+		if(msg_len > 0 && skip == 1)
 		{
 			printf("send msg\n");
 
 			memset(msg.mtext,0,sizeof(msg.mtext));
 			memcpy(msg.mtext,tempx,msg_len);
 			ret = 0;
-			ret = msgsnd(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+//			ret = msgsnd(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)
 			{
 				perror("msgsnd error");
 			}
 			printf("msgsnd ret: %d\n",ret);
+			skip = 1;
 		}
 		index = 0;
 	}
@@ -322,8 +328,8 @@ void *send_thread(void *socket_desc)
 
 void *read_queue_thread(void *socket_desc)
 {
-	struct msgqbuf msg;
 	int msgtype = 1;
+	struct msgqbuf msg;
 	msg.mtype = msgtype;
 	memset(msg.mtext,0,sizeof(msg.mtext));
 	printf("queue thread started\n");
@@ -412,55 +418,137 @@ void *tester_thread(void *socket_desc)
 	do
 	{
 		key = getc(stdin);
-		printf("key: %c\n",key);
+//		printf("key: %c\n",key);
 		switch(key)
 		{
 			case 'a':
-				strcpy(buff,"hello text\0");
+				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = 'A';
+				cmd = CHICK_LIGHT;
 				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 
 			case 'b':
-				strcpy(buff,"asdf test\0");
+				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = 'B';
+				cmd = CHICK_LIGHT;
 				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'c':
-				strcpy(buff,"asdf tester 1234\0");
+				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = 'C';
+				cmd = CHICK_HEATER;
 				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'd':
-				strcpy(buff,"what's up test\0");
+				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = 'D';
-				sock = 5;
+				cmd = CHICK_HEATER;
+				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'e':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = BENCH_12V_1;
+				sock = 4;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'f':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = BENCH_12V_1;
+				sock = 4;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+
+			case 'g':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_SOUTH;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'h':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_SOUTH;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'i':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_KITCHEN;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'j':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_KITCHEN;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'k':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_EAST;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'l':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_EAST;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'm':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_DOOR;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'n':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_DOOR;
+				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'o':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = COOP1_LIGHT;
+				sock = 6;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'p':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = COOP1_LIGHT;
+				sock = 6;
+				send_msg(sock,msg_len,buff,cmd);
+			break;
+			case 'q':
 				strcpy(buff,"closing client program\0");
 				msg_len = strlen(buff);
 				cmd = 99;
 				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'f':
-				strcpy(buff,"closing client program\0");
-				msg_len = strlen(buff);
-				cmd = 99;
 				sock = 5;
+				send_msg(sock,msg_len,buff,cmd);
+				sock = 6;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 
 		}
-		printf("%s\n",buff);
+//		printf("%s\n",buff);
 
 	}while(key != 'q' && key != 'Q');
 }

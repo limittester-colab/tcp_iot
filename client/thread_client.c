@@ -9,9 +9,11 @@
 #include <unistd.h> // read(), write(), close()
 #include<pthread.h> //for threading , link with lpthread
 #include <errno.h>
+#include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
+#include "cmd_types.h"
 #include "mytypes.h"
 #include "tasks.h"
 
@@ -19,9 +21,11 @@
 #define PORT 5193
 #define SA struct sockaddr
 
-void *read_thread(void *);
+static int global_socket;
+
+void *listen_thread(void *);
 void *send_queue_thread(void *);
-pthread_t pread_thread;
+pthread_t plisten_thread;
 pthread_t queue_thread;
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
@@ -78,7 +82,7 @@ void *send_queue_thread(void *buff)
 }
 
 /****************************************************************************************/
-void *read_thread(void *socket_desc)
+void *listen_thread(void *socket_desc)
 {
 	char tempx[200];
 	int msg_len;
@@ -94,10 +98,13 @@ void *read_thread(void *socket_desc)
 	//Receive a message from client
 //	printf("start %d\n", global_socket);
 	msg_len = 1;
+	printf("main_qid: %d\n",main_qid);
+
 	while(msg_len > 0)
 	{
 //		printf("sock: %d\n",global_socket);
 		msg_len = get_msg();
+//		printf("msg_len: %d\n",msg_len);
 		if(msg_len > 0)
 		{
 	//		printf("msg_len: %d\n",msg_len);
@@ -111,7 +118,7 @@ void *read_thread(void *socket_desc)
 				memset(tempx,0,sizeof(tempx));
 				send_msg(0, tempx,cmd, 0);
 				msg_len = 0;
-				pthread_kill(pread_thread,NULL);
+				pthread_kill(plisten_thread,NULL);
 				close(global_socket);
 				close_program = 1;
 				return;
@@ -130,8 +137,7 @@ void *read_thread(void *socket_desc)
 				printf("%c",tempx[i]);
 			printf("\n");
 
-			printf("cmd: %d\n",cmd);
-	//		print_cmd(cmd);
+//			print_cmd(cmd);
 
 			memmove(tempx,tempx+1,msg_len);
 			//printf("\n");
@@ -150,12 +156,12 @@ void *read_thread(void *socket_desc)
 //			for(i = 0;i < msg_len + 3;i++)
 //				printf("%02x ",msg.mtext[i]);
 //			printf("\n");
-			ret = msgsnd(basic_controls_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)
 			{
 				perror("msgsnd error");
 			}
-			printf("msgsnd ret: %d\n",ret);
+//			printf("msgsnd ret: %d\n\n",ret);
 		}
 	}
 
@@ -182,16 +188,30 @@ int main(int argc, char *argv[])
 	close_program = 0;
 	int test;
 
-	basic_controls_key = BASIC_CONTROLS_KEY;
-	main_key = MAIN_KEY;
-	main_qid = msgget(main_key, IPC_CREAT | 0666);
-	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
-
 	if(argc != 2)
 	{
 		printf("must enter the name of the client so it can be sent to the server\n");
 		exit(1);
 	}
+
+	main_key = MAIN_KEY;
+	main_qid = msgget(main_key, IPC_CREAT | 0666);
+	if(main_qid < 0)
+	{
+		printf("errno: %d\n",errno);
+		exit(1);
+	}
+	printf("main_qid: %d\n",main_qid);
+
+	basic_controls_key = BASIC_CONTROLS_KEY;
+	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
+	if(basic_controls_qid < 0)
+	{
+		printf("errno: %d\n",errno);
+		exit(1);
+	}
+	printf("basic_controls_qid: %d\n",main_qid);
+
 	strcpy(buff2,"test send\0");
 	memset(client_name, 0, sizeof(client_name));
 	printf("%s\n",argv[1]);
@@ -209,7 +229,7 @@ int main(int argc, char *argv[])
 
     // assign IP, PORT
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("192.168.88.147");
+    servaddr.sin_addr.s_addr = inet_addr("192.168.88.239");
     servaddr.sin_port = htons(PORT);
 
     // connect the client socket to server socket
@@ -228,7 +248,7 @@ int main(int argc, char *argv[])
 //	getchar();
 	printf("start...\n");
 	
-	if( pthread_create( &pread_thread , NULL ,  read_thread , (void*) global_socket) < 0)
+	if( pthread_create( &plisten_thread , NULL ,  listen_thread , (void*) global_socket) < 0)
 	{
 		perror("could not create thread");
 		return 1;
@@ -251,7 +271,6 @@ int main(int argc, char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
-
 	// send the client name to the server 
 	send_msg(30, client_name, 0, 0);
 
@@ -260,9 +279,9 @@ int main(int argc, char *argv[])
 		uSleep(1,0);
 	}
 	return 0;
-	if(pthread_join(pread_thread, NULL) != 0)
+	if(pthread_join(plisten_thread, NULL) != 0)
 	{
-		perror("pthread_join pread_thread");
+		perror("pthread_join plisten_thread");
 		exit(1);
 	}
 	if(pthread_join(queue_thread, NULL) != 0)

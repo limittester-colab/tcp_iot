@@ -86,7 +86,10 @@ LD_SYS_LIBS = $(SYS_LIBRARIES)
 # gcc3 and gcc4 doesn't support thumb-interworking, but compiles anyway
 # gcc3/4 doesn't work with -mapcs-32
 # use the USE_CARDS define when using a 20-port pc-104 daughter card
-CC_FLAGS = -static -g -DSERVER_146 -DUSE_CARDS -Wstrict-prototypes -mcpu=arm920t
+#using TS-4600
+#CC_FLAGS = -static -g -DSERVER_146 -DUSE_CARDS -Wstrict-prototypes -mcpu=arm920t
+#using rpi
+CC_FLAGS = -static -g -DSERVER_146 -Wstrict-prototypes
 #CC_FLAGS = -static -g -DTS_7800 -Wstrict-prototypes -mcpu=arm920t
 #CC_FLAGS = -static -g -Wstrict-prototypes -mcpu=arm920t
 GNULDFLAGS_T = ${GNULDFLAGS} -pthread
@@ -105,12 +108,6 @@ all : server
 #test_ioports test_inports # test_ports test_spi
 #llist_test_threads llist_test_threads_rw
 
-nbus.o: nbus.c nbus.h
-	${CC} ${CC_FLAGS} ${INCLUDE_PATHS} -c nbus.c
-
-ioports.o: ioports.c ioports.h
-	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c ioports.c
-
 thread_server.o: thread_server.c
 	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c thread_server.c
 
@@ -119,9 +116,6 @@ cmd_tasks.o: cmd_tasks.c tasks.h
 
 tasks.o: tasks.c tasks.h
 	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c tasks.c
-
-ollist_threads_rw.o: queue/ollist_threads_rw.c queue/ollist_threads_rw.h
-	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c queue/ollist_threads_rw.c
 
 rdwr.o: queue/rdwr.c queue/rdwr.h
 	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c queue/rdwr.c
@@ -135,9 +129,9 @@ load_cmds.o: load_cmds.c
 ollist_threads_rw.o: queue/ollist_threads_rw.c queue/ollist_threads_rw.h
 	${CC} ${INCLUDE_PATHS} ${CC_FLAGS} -c queue/ollist_threads_rw.c
 
-server: thread_server.o ioports.o nbus.o tasks.o cmd_tasks.o load_cmds.o ollist_threads_rw.o rdwr.o config_file.o
+server: thread_server.o tasks.o cmd_tasks.o load_cmds.o ollist_threads_rw.o rdwr.o config_file.o
 # if we don't use -static then the target should have: libpthread.so.0 in the /lib directory
-	${CC} -static -pthread thread_server.o ioports.o nbus.o cmd_tasks.o tasks.o load_cmds.o ollist_threads_rw.o rdwr.o config_file.o -o server -lm
+	${CC} -static -pthread thread_server.o cmd_tasks.o tasks.o load_cmds.o ollist_threads_rw.o rdwr.o config_file.o -o server -lm
 
 clean :
 	rm -f *.o *~ *# core  server

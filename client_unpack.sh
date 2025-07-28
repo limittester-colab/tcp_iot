@@ -1,10 +1,10 @@
-clear
 rm client
 if [ -e /home/dan/dev/client.tar ]
 then
 tar xvf /home/dan/dev/client.tar
 mv client/* .
 rmdir client
+make clean
 make &> out.txt
 if grep -q error out.txt
 then 

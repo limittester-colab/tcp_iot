@@ -10,7 +10,6 @@
 #include <stdio.h> 
 #include <string.h>
 #include <sched.h>
-#include <sys/types.h>
 #include <pthread.h>
 #define closesocket close
 #include <sys/stat.h>
@@ -18,9 +17,11 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <errno.h>
+#include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <dirent.h> 
+
 #include "cmd_types.h"
 #include "mytypes.h"
 #include "ioports.h"
@@ -33,10 +34,24 @@
 //#include "raw_data.h"
 #include "cs_client/config_file.h"
 
+int trunning_days, trunning_hours, trunning_minutes, trunning_seconds;
+int trunning_seconds_off;
+
 static struct  sockaddr_in sad;  /* structure to hold server's address  */
 #define TOGGLE_OTP otp->onoff = (otp->onoff == 1?0:1)
 
-extern CMD_STRUCT cmd_array[];
+static CMD_STRUCT cmd_array[];
+REAL_BANKS real_banks[40];
+
+enum client_list	// if adding to this list, change MAX_CLIENTS above 
+{
+	_158,			// WINDOWS-11A (runs on Windows machine)
+	_154,			// Cabin
+	_147,			// Testbench
+	_243,			// aux_client (runs on a PC linux box)
+	_151,			// extra TS-4600 card
+	_SERVER			// Garage (146)
+}CLIENT_LIST;
 
 //UCHAR msg_buf[SERIAL_BUFF_SIZE];
 
@@ -48,8 +63,6 @@ inline int pack4chars(char c1, char c2, char c3, char c4) {
 }
 #endif
 
-struct msgqbuf msg;		// this has to be shared by send_sock_msg & get_host_cmd_task
-int msgtype = 1;
 /*
 char *lookup_raw_data(int val)
 {
@@ -64,50 +77,29 @@ void print_cmd(UCHAR cmd)
 		printf("unknown cmd: %d\n",cmd);
 	printf("%d %s\n",cmd, cmd_array[cmd].cmd_str);
 }
-
 /*********************************************************************/
-// send a msg back to the sock to send to server sock
-void send_sock_msg(UCHAR *send_msg, int msg_len, UCHAR cmd, int dest)
+void add_msg_queue(UCHAR cmd, UCHAR onoff)
 {
-	int i;
+	struct msgqbuf msg;
+	int msgtype = 1;
 	msg.mtype = msgtype;
-	memset(msg.mtext,0,sizeof(msg.mtext));
 	msg.mtext[0] = cmd;
-	msg.mtext[1] = dest;
-	msg.mtext[2] = (UCHAR)msg_len;
-	msg.mtext[3] = (UCHAR)(msg_len >> 4);
-/*
-	printf("msg_len: %d\n",msg_len);
+	msg.mtext[1] = onoff;
+//	pthread_mutex_lock(&msg_queue_lock);
 
-	printf("\n");
-	for(i = 0;i < msg_len;i++)
-		printf("%02x ",msg.mtext[i]);
-	printf("\n");
-*/
-//	printf("send_sock_msg :");
-//	print_cmd(cmd);
-	//printf("msg_len: %d\n",msg_len);
-	memcpy(msg.mtext + 4,send_msg,msg_len);
-	//printf("msg to cmd_host from client %d\n",dest);
-/*
-	for(i = 0;i < msg_len+3;i++)
-		printf("%02x ",msg.mtext[i]);
-	printf("\n");
-*/
-	// if client send msg to recv_msg_task
-	// if server send to cmd host on sock 
-/*
-	if (msgsnd(sock_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR) == -1) 
+	if (msgsnd(basic_controls_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR) == -1) 
 	{
+		// keep getting "Invalid Argument" - cause I didn't set the mtype
 		perror("msgsnd error");
-		//exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 	}
-*/
+//	printf("add_msg_queue\n");
+//	pthread_mutex_unlock(&msg_queue_lock);
+//	printf("add: %d %x\r\n",msg_queue_ptr,cmd);
 }
-
 /*********************************************************************/
 // task to get commands from the sock
-UCHAR get_host_cmd_task(int test)
+UCHAR get_host_cmd_task(int *test)
 {
 	O_DATA *otp;
 	O_DATA **otpp = &otp;
@@ -150,7 +142,8 @@ UCHAR get_host_cmd_task(int test)
 	UCHAR mask;
 	UCHAR mask2;
 	int sample_size = 10;
-	msg.mtype = msgtype;
+	struct msgqbuf msg;		// this has to be shared by send_sock_msg & get_host_cmd_task
+	int msgtype = 1;
 	float F,C, fval; 
 	int ival;
 	DIR *d;
@@ -158,19 +151,19 @@ UCHAR get_host_cmd_task(int test)
 	struct stat st;
 
 #ifdef SERVER_146
-	//printf("starting server\n");
+	printf("starting server\n");
 	this_client_id = _SERVER;
 #endif
 #ifdef CL_147
-	//printf("starting 147\n");
+	printf("starting 147\n");
 	this_client_id = _147;
 #endif 
 #ifdef CL_154
-	//printf("starting 154\n");
+	printf("starting 154\n");
 	this_client_id = _154;
 #endif 
 #ifdef CL_151
-	//printf("starting 151\n");
+	printf("starting 151\n");
 	this_client_id = _151;
 #endif 
 #if 1
@@ -301,8 +294,9 @@ UCHAR get_host_cmd_task(int test)
 	trunning_minutes = 14;
 	trunning_seconds = 0;
 */
+#endif
 //	program_start_time = curtime();
-
+	printf("starting host: %d\n",this_client_id);
 	ollist_init(&oll);
 	strcpy(oFileName, "odata.dat\0");
 	if(access(oFileName,F_OK) != -1)
@@ -313,6 +307,7 @@ UCHAR get_host_cmd_task(int test)
 			printf("%s\r\n",errmsg);
 		}
 	}
+//	printf("loaded config\n");
 /*
 	cllist_init(&cll);
 	if(access(cFileName,F_OK) != -1)
@@ -349,8 +344,9 @@ UCHAR get_host_cmd_task(int test)
 
 	ds_index = 0;
 */
-#endif
+	msg.mtype = msgtype;
 
+	printf("main_qid: %d\n",main_qid);
 	while(TRUE)
 	{
 		cmd = 0;
@@ -360,8 +356,11 @@ UCHAR get_host_cmd_task(int test)
 			//free(stp);
 			return 0;
 		}
-		uSleep(0,TIME_DELAY/10);
+//		uSleep(0,TIME_DELAY/10);abort
 		// msg from sock 
+//		printf("\n..\n");
+		msg.mtype = msgtype;
+//		printf("start msgrcv\n");
 		if (msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR) == -1) 
 		{
 			if (errno != ENOMSG) 
@@ -370,12 +369,13 @@ UCHAR get_host_cmd_task(int test)
 				printf("msgrcv error\n");
 				exit(EXIT_FAILURE);
 			}
+			printf("%d\n",errno);
 		}
 		cmd = msg.mtext[0];
-		//printf("sched cmd host: ");
-		//print_cmd(cmd);
+		print_cmd(cmd);
 		msg_len = (int)msg.mtext[1];
 		msg_len |= (int)(msg.mtext[2] << 4);
+//		printf("sched cmd host %d\n",msg_len);
 
 		//printf("msg_len: %d\n",msg_len);
 		memset(tempx,0,sizeof(tempx));
@@ -488,7 +488,7 @@ UCHAR get_host_cmd_task(int test)
 					printf("label: %s\n",label);
 					msg_len = strlen(label);
 					printf("len: %d\n",msg_len);
-					send_sock_msg(label, msg_len, SET_PROPERTIES, _158);
+//					send_sock_msg(label, msg_len, SET_PROPERTIES, _158);
 					break;
 
 				case TURN_ALL_LIGHTS_OFF:
@@ -533,7 +533,7 @@ UCHAR get_host_cmd_task(int test)
 
 						sprintf(tempx, "%d %0d %02d:%02d %d",this_client_id, dtp->sensor_no, dtp->hour, dtp->minute, ival);
 						//sprintf(tempx,"%d:%d:%d - %sxxx",dtp->hour, dtp->minute, dtp->second, lookup_raw_data(dtp->value));
-						send_sock_msg(tempx, strlen(tempx), cmd, _158);
+//						send_sock_msg(tempx, strlen(tempx), cmd, _158);
 						//printf("test: %s\n",tempx);
 						//uSleep(0,TIME_DELAY);
 						uSleep(0,TIME_DELAY/4);
@@ -542,7 +542,7 @@ UCHAR get_host_cmd_task(int test)
 
 				case SEND_CLIENT_LIST:
 					//printf("send client list :");
-					send_sock_msg(tempx, msg_len, SEND_CLIENT_LIST, _SERVER);
+//					send_sock_msg(tempx, msg_len, SEND_CLIENT_LIST, _SERVER);
 					break;
 
 				case DLLIST_SAVE:
@@ -608,12 +608,12 @@ UCHAR get_host_cmd_task(int test)
 					//printf("send timeup: %s\n",tempx);
 					msg_len = strlen(tempx);
 					uSleep(0,TIME_DELAY/4);
-					send_sock_msg(tempx, msg_len, UPTIME_MSG, _SERVER);
+//					send_sock_msg(tempx, msg_len, UPTIME_MSG, _SERVER);
 					break;
 
 				case UPTIME_MSG:
 					//printf("uptime msg: %s\n",tempx);
-					send_sock_msg(tempx, msg_len, UPTIME_MSG, _SERVER);
+//					send_sock_msg(tempx, msg_len, UPTIME_MSG, _SERVER);
 					break;
 
 				case SEND_STATUS:
@@ -629,7 +629,7 @@ UCHAR get_host_cmd_task(int test)
 					cmd = SEND_MESSAGE;
 					sprintf(tempx,"k: %d j: %dxxx",k,j);
 					msg_len = strlen(tempx);
-					send_sock_msg(tempx, msg_len, cmd, _158);
+//					send_sock_msg(tempx, msg_len, cmd, _158);
 					printf("%s\n",tempx);
 					break;
 
@@ -640,7 +640,7 @@ UCHAR get_host_cmd_task(int test)
 						printf("%c",tempx[i]);
 					printf("\n");
 
-					send_sock_msg(tempx, msg_len, cmd, _158);
+//					send_sock_msg(tempx, msg_len, cmd, _158);
 					break;
 
 				case SET_TIME:	// could this be easier with strtok() ?
@@ -742,7 +742,7 @@ UCHAR get_host_cmd_task(int test)
 					//printf("hour: %d\n",pt->tm_hour);
 
 					curtime2 = mktime(pt);
-					stime(pcurtime2);
+//					stime(pcurtime2);
 					uSleep(0,TIME_DELAY/3);
 					gettimeofday(&mtv, NULL);
 					curtime2 = mtv.tv_sec;
@@ -769,7 +769,7 @@ UCHAR get_host_cmd_task(int test)
 					msg_len = strlen(tempx);
 					//printf("msg_len: %d\n",msg_len);
 					cmd = SEND_MESSAGE;
-					send_sock_msg(tempx, msg_len, cmd, _158);
+//					send_sock_msg(tempx, msg_len, cmd, _158);
 					break;
 
 				case BAD_MSG:
@@ -803,4 +803,57 @@ UCHAR get_host_cmd_task(int test)
 		}									  // if rc > 0
 	}
 	return test + 1;
+}
+
+
+UCHAR get_host_cmd_task2(int *test)
+{
+	struct msgqbuf msg;		// this has to be shared by send_sock_msg & get_host_cmd_task
+	int msgtype = 1;
+	UCHAR cmd;
+	int msg_len;
+	UCHAR tempx[30];
+	int ret;
+	printf("starting cmd host\n");
+
+	msg.mtype = msgtype;
+
+//	while(TRUE)
+	for(;;)
+	{
+		cmd = 0;
+		if(close_program == 1)
+		{
+			printf("shutting down cmd host\n");
+			//free(stp);
+			return 0;
+		}
+//		uSleep(0,TIME_DELAY/10);abort
+		// msg from sock 
+		printf("..\n");
+		memset(msg.mtext,0,sizeof(msg.mtext));
+		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
+		printf("ret: %ld errno: %d\n",ret,errno);
+		if(ret == -1)
+		{
+			if(errno != ENOMSG)
+			{
+				perror("msgrcv");
+				printf("msgrcv error\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+		printf("errno: %d\n",errno);
+		cmd = msg.mtext[0];
+		print_cmd(cmd);
+		printf("sched cmd host: ");
+
+		msg_len = (int)msg.mtext[1];
+		msg_len |= (int)(msg.mtext[2] << 4);
+
+		printf("msg_len: %d\n",msg_len);
+		memset(tempx,0,sizeof(tempx));
+		memcpy(tempx,&msg.mtext[3],msg_len);
+		tempx[msg_len + 1] = 0;
+	}
 }

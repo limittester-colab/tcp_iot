@@ -1,6 +1,8 @@
+#ifndef __CMD_TYPES_H
+#define  __CMD_TYPES_H
 // msg's sent from client to TS-7200
-
-enum cmd_types
+#warning "including cmd_types"
+static enum cmd_types
 {
 	NON_CMD,
 	DESK_LIGHT,
@@ -82,3 +84,4 @@ enum cmd_types
 	SEND_MESSAGE2
 }CMD_TYPES;
 
+#endif

@@ -24,11 +24,13 @@ typedef struct
 	char client_name[30];
 }THREADS;
 
-// global variables
-int trunning_days, trunning_hours, trunning_minutes, trunning_seconds;
-int trunning_seconds_off;
+struct msgqbuf
+{
+	long mtype;
+	UCHAR mtext[300];
+};
 
-REAL_BANKS real_banks[40];
+// global variables
 
 #define DEFAULT                 0
 #define TIME_SLICE              1
@@ -65,15 +67,14 @@ static int basic_controls_qid;
 static key_t basic_controls_key;
 static int close_program;
 static int this_client_id;
-UCHAR get_host_cmd_task(int test);
-UCHAR basic_controls_task(int test);
+UCHAR get_host_cmd_task(int *test);
+UCHAR get_host_cmd_task2(int *test);
+UCHAR basic_controls_task(int *test);
 
 #ifndef SERVER_146
 #warning "SERVER_146 not defined"
 #define NUM_SOCK_TASKS			3
 #define NUM_SCHED_TASKS			8
-
-int global_socket;
 
 UCHAR recv_msg_task(int test);
 //void send_serialother2(UCHAR cmd, int size, UCHAR *buf);
@@ -97,8 +98,6 @@ int get_msg(void);
 // params for usleep()
 
 // uSleep(0,100000000L); - roughly 100ms using uSleep();
-
-int global_socket;
 
 int put_sock(int sd, UCHAR *buf,int buflen, int block, char *errmsg);
 int get_sock(int sd, UCHAR *buf, int buflen, int block, char *errmsg);

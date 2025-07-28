@@ -5,6 +5,7 @@ then
 tar xvf /home/dan/dev/server.tar
 mv server/* .
 rmdir server
+make clean
 make &> out.txt
 if grep -q error out.txt
 then
