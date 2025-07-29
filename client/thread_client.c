@@ -29,7 +29,9 @@ pthread_t plisten_thread;
 pthread_t queue_thread;
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
+pthread_t test_thread;
 
+void *tester_thread(void *);
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 #endif
 
@@ -98,7 +100,7 @@ void *listen_thread(void *socket_desc)
 	//Receive a message from client
 //	printf("start %d\n", global_socket);
 	msg_len = 1;
-	printf("main_qid: %d\n",main_qid);
+//	printf("main_qid: %d\n",main_qid);
 
 	while(msg_len > 0)
 	{
@@ -119,6 +121,9 @@ void *listen_thread(void *socket_desc)
 				send_msg(0, tempx,cmd, 0);
 				msg_len = 0;
 				pthread_kill(plisten_thread,NULL);
+				pthread_kill(cmd_task_thread,NULL);
+				pthread_kill(pbasic_controls_task_thread,NULL);
+				pthread_kill(test_thread,NULL);
 				close(global_socket);
 				close_program = 1;
 				return;
@@ -147,7 +152,6 @@ void *listen_thread(void *socket_desc)
 */
 //			printf("\n");
 
-			uSleep(1,0);
 			memset(msg.mtext,0,sizeof(msg.mtext));
 			msg.mtext[0] = cmd;
 			msg.mtext[1] = (UCHAR)msg_len;
@@ -176,6 +180,194 @@ void *listen_thread(void *socket_desc)
 		
 	return 0;
 }
+void *tester_thread(void *socket_desc)
+{
+	char buff[30];
+	int key;
+	int msg_len;
+	UCHAR cmd;
+	int i,j;
+	UCHAR dest;
+
+	printf("starting tester thread\n");
+	do
+	{
+		key = getc(stdin);
+		printf("key: %c\n",key);
+		switch(key)
+		{
+			case 'a':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CHICK_LIGHT;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'b':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CHICK_LIGHT;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'c':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CHICK_HEATER;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'd':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CHICK_HEATER;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'e':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = BENCH_12V_1;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'f':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = BENCH_12V_1;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+
+			case 'g':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_SOUTH;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'h':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_SOUTH;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'i':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_KITCHEN;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'j':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_KITCHEN;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'k':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_EAST;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'l':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_EAST;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'm':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_DOOR;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'n':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = CABIN_DOOR;
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'o':
+				strcpy(buff,"ON\0");
+				msg_len = strlen(buff);
+				cmd = BENCH_LIGHT1;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'p':
+				strcpy(buff,"OFF\0");
+				msg_len = strlen(buff);
+				cmd = BENCH_LIGHT1;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+			break;
+			case 'q':
+/*
+				strcpy(buff,"closing client program\0");
+				msg_len = strlen(buff);
+				cmd = 99;
+				dest = 0;
+				send_msg(msg_len, buff, cmd, dest);
+				dest = 1;
+				send_msg(msg_len, buff, cmd, dest);
+				dest = 2;
+				send_msg(msg_len, buff, cmd, dest);
+*/
+			break;
+			case 'r':
+				dest = 0;
+				cmd = COOP1_LIGHT;
+				
+				for(i = 0;i < 16;i++)
+				{
+					strcpy(buff,"ON\0");
+					msg_len = strlen(buff);
+					send_msg(msg_len, buff, cmd, dest);
+					uSleep(1,0);
+					strcpy(buff,"OFF\0");
+					msg_len = strlen(buff);
+					send_msg(msg_len, buff, cmd, dest);
+					uSleep(1,0);
+					cmd++;
+				}
+			break;
+			case 's':
+				dest = 2;
+				uSleep(5,0);
+				for(j = 0;j < 3;j++)
+				{
+					cmd = COOP1_LIGHT;
+					for(i = 0;i < 16;i++)	// there's 4 of these that aren't wired
+					{
+						strcpy(buff,"ON\0");
+						msg_len = strlen(buff);
+						send_msg(msg_len, buff, cmd, dest);
+//						uSleep(0,TIME_DELAY/2);
+						uSleep(1,0);
+						strcpy(buff,"OFF\0");
+						msg_len = strlen(buff);
+						send_msg(msg_len, buff, cmd, dest);
+//						uSleep(0,TIME_DELAY/2);
+						uSleep(1,0);
+						cmd++;
+					}
+				}
+			break;
+
+		}
+//		printf("%s\n",buff);
+
+	}while(key != 'q' && key != 'Q');
+}
+
 /****************************************************************************************/
 int main(int argc, char *argv[])
 {
@@ -201,7 +393,7 @@ int main(int argc, char *argv[])
 		printf("errno: %d\n",errno);
 		exit(1);
 	}
-	printf("main_qid: %d\n",main_qid);
+//	printf("main_qid: %d\n",main_qid);
 
 	basic_controls_key = BASIC_CONTROLS_KEY;
 	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
@@ -210,11 +402,11 @@ int main(int argc, char *argv[])
 		printf("errno: %d\n",errno);
 		exit(1);
 	}
-	printf("basic_controls_qid: %d\n",main_qid);
+//	printf("basic_controls_qid: %d\n",main_qid);
 
 	strcpy(buff2,"test send\0");
 	memset(client_name, 0, sizeof(client_name));
-	printf("%s\n",argv[1]);
+	//printf("%s\n",argv[1]);
 	strcpy(client_name, argv[1]);
 	printf("client name: %s\n",client_name);
     // socket create and verification
@@ -246,7 +438,7 @@ int main(int argc, char *argv[])
 //	then it sends 30 bytes as the name of the client (can be padded with zeros)		
 
 //	getchar();
-	printf("start...\n");
+//	printf("start...\n");
 	
 	if( pthread_create( &plisten_thread , NULL ,  listen_thread , (void*) global_socket) < 0)
 	{
@@ -271,6 +463,13 @@ int main(int argc, char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
+
+	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) test) < 0)
+	{
+		perror("could not create thread");
+		return 1;
+	}
+
 	// send the client name to the server 
 	send_msg(30, client_name, 0, 0);
 
@@ -278,7 +477,14 @@ int main(int argc, char *argv[])
 	{
 		uSleep(1,0);
 	}
+	pthread_kill(plisten_thread,NULL);
+	pthread_kill(cmd_task_thread,NULL);
+	pthread_kill(pbasic_controls_task_thread,NULL);
+	pthread_kill(test_thread,NULL);
+	close(global_socket);
 	return 0;
+	
+/*
 	if(pthread_join(plisten_thread, NULL) != 0)
 	{
 		perror("pthread_join plisten_thread");
@@ -290,6 +496,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	printf("1 closing program\n");
+*/
     // close the socket
 }
 #if 1

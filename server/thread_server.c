@@ -131,6 +131,7 @@ int main(int argc , char *argv[])
 //		pthread_kill(pthreads_list[i].read_queue_thread,0);
 	}
 	pthread_kill(sock_thread, 0);
+	pthread_kill(test_thread, 0);
 //	pthread_kill(time_thread, 0);
 	printf("done\n");
 	return 0;
@@ -216,6 +217,7 @@ void *listen_thread(void *socket_desc)
 
 	while(msg_len > 0)
 	{
+/*
 		if(index < 0)
 		{
 			index = 0;
@@ -224,7 +226,7 @@ void *listen_thread(void *socket_desc)
 			printf("index: %d sock: %d\n",index,sock);
 			pindex = index;
 		}
-
+*/
 //		printf("sock: %d\n",sock);
 		msg_len = get_msg(sock);
 //		printf("msg_len: %d\n",msg_len);
@@ -234,7 +236,7 @@ void *listen_thread(void *socket_desc)
 		cmd = tempx[0];
 		dest = tempx[1];
 
-//		printf("dest: %d\n",dest);
+//		printf("cmd: %d dest: %d\n",cmd,dest);
 /*
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
@@ -252,6 +254,8 @@ void *listen_thread(void *socket_desc)
 //		print_cmd(cmd);
 
 		memmove(tempx,tempx+2,msg_len);
+		tempx[msg_len] = 0;
+//		printf("tempx: %s\n",tempx);
 
 		if(client_name[0] == 0)
 		{
@@ -265,23 +269,28 @@ void *listen_thread(void *socket_desc)
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
 */
-		printf("\n");
-
+//		printf("\n");
+		index = dest;
+//		printf("msg_len: %d\n",msg_len);
 		if(msg_len > 0 && skip == 1)
 		{
-			printf("send msg\n");
-
+			uSleep(0,TIME_DELAY/4);
+//			printf("send msg\n");
+			send_msg(pthreads_list[index].sock, msg_len, tempx, cmd);
+/*
 			memset(msg.mtext,0,sizeof(msg.mtext));
 			memcpy(msg.mtext,tempx,msg_len);
 			ret = 0;
-//			ret = msgsnd(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+			ret = msgsnd(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+
 			if(ret == -1)
 			{
 				perror("msgsnd error");
 			}
 			printf("msgsnd ret: %d\n",ret);
-			skip = 1;
+*/
 		}
+		skip = 1;
 		index = 0;
 	}
 
@@ -302,8 +311,6 @@ void *listen_thread(void *socket_desc)
 
 //	pthread_kill(pthreads_list[pindex].read_queue_thread,0);
 	free(socket_desc);
-	pthread_exit(NULL);
-
 	return 0;
 }
 
@@ -410,6 +417,7 @@ void *tester_thread(void *socket_desc)
 	int msg_len;
 	UCHAR cmd;
 	int sock = 4;
+	int i,j;
 //	int sock = *(int *)socket_desc;
 //	printf("sock: %d\n",sock);
 //	for(;;)
@@ -428,7 +436,6 @@ void *tester_thread(void *socket_desc)
 				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
-
 			case 'b':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
@@ -524,15 +531,15 @@ void *tester_thread(void *socket_desc)
 			case 'o':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = COOP1_LIGHT;
-				sock = 6;
+				cmd = BENCH_LIGHT1;
+				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'p':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = COOP1_LIGHT;
-				sock = 6;
+				cmd = BENCH_LIGHT1;
+				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'q':
@@ -546,14 +553,51 @@ void *tester_thread(void *socket_desc)
 				sock = 6;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
+			case 'r':
+				sock = 4;
+				cmd = COOP1_LIGHT;
+				
+				for(i = 0;i < 16;i++)
+				{
+					strcpy(buff,"ON\0");
+					msg_len = strlen(buff);
+					send_msg(sock,msg_len,buff,cmd);
+					uSleep(1,0);
+					strcpy(buff,"OFF\0");
+					msg_len = strlen(buff);
+					send_msg(sock,msg_len,buff,cmd);
+					uSleep(1,0);
+					cmd++;
+				}
+			break;
+			case 's':
+				sock = 6;
+				uSleep(5,0);
+				for(j = 0;j < 2;j++)
+				{
+					cmd = COOP1_LIGHT;
+					for(i = 0;i < 16;i++)	// there's 4 of these that aren't wired
+					{
+						strcpy(buff,"ON\0");
+						msg_len = strlen(buff);
+						send_msg(sock,msg_len,buff,cmd);
+//						uSleep(0,TIME_DELAY/2);
+						uSleep(1,0);
+						strcpy(buff,"OFF\0");
+						msg_len = strlen(buff);
+						send_msg(sock,msg_len,buff,cmd);
+//						uSleep(0,TIME_DELAY/2);
+						uSleep(1,0);
+						cmd++;
+					}
+				}
+			break;
 
 		}
 //		printf("%s\n",buff);
 
 	}while(key != 'q' && key != 'Q');
 }
-
-
 #if 1
 /*********************************************************************/
 /*********************************************************************/
@@ -605,7 +649,7 @@ void send_msg(int sd, int msg_len, UCHAR *msg, UCHAR msg_type)
 	ret = send_tcp(sd, &pre_preamble[0],8);
 	temp[0] = (UCHAR)(msg_len & 0x0F);
 	temp[1] = (UCHAR)((msg_len & 0xF0) >> 4);
-	printf("%02x %02x\n",temp[0],temp[1]);
+//	printf("%02x %02x\n",temp[0],temp[1]);
 	send_tcp(sd, (UCHAR *)&temp[0],1);
 	send_tcp(sd, (UCHAR *)&temp[1],1);
 	send_tcp(sd, (UCHAR *)&msg_type,1);

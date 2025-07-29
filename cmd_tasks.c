@@ -346,7 +346,7 @@ UCHAR get_host_cmd_task(int *test)
 */
 	msg.mtype = msgtype;
 
-	printf("main_qid: %d\n",main_qid);
+//	printf("main_qid: %d\n",main_qid);
 	while(TRUE)
 	{
 		cmd = 0;
