@@ -172,7 +172,8 @@ void *new_sock_thread(void *socket_desc)
 		pthreads_list[no_threads].sock = new_socket;
 		pthreads_list[no_threads].main_key = main_key + no_threads;
 		pthreads_list[no_threads].qid = msgget(pthreads_list[no_threads].main_key, IPC_CREAT | 0666);
-		printf("%d %d %d\n",pthreads_list[no_threads].qid, pthreads_list[no_threads].main_key, pthreads_list[no_threads].sock);
+//		printf("%d %d %d\n",pthreads_list[no_threads].qid, pthreads_list[no_threads].main_key, pthreads_list[no_threads].sock);
+		printf("sock: %d\n",new_socket);
 		no_threads++;
 /*
 		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
@@ -228,9 +229,19 @@ void *listen_thread(void *socket_desc)
 		}
 */
 //		printf("sock: %d\n",sock);
+/*
+		if(sock == 6)
+		{
+			msg_len = get_msgb(sock);
+		}
+		else
+		{
+			msg_len = get_msg(sock);
+		}
+*/
 		msg_len = get_msg(sock);
-//		printf("msg_len: %d\n",msg_len);
 		ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
+//		printf("msg_len: %d\n",msg_len);
 //		printf("sock: %d\n",sock);
 //		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
 		cmd = tempx[0];
@@ -260,7 +271,7 @@ void *listen_thread(void *socket_desc)
 		if(client_name[0] == 0)
 		{
 			strcpy(client_name, tempx);
-			printf("this client is called: %s\n",client_name);
+			printf("this client is called: %s\n\n",client_name);
 //			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
 			//add_client_queue(client_name);
 			strcpy(pthreads_list[index].client_name,client_name);
@@ -573,23 +584,20 @@ void *tester_thread(void *socket_desc)
 			case 's':
 				sock = 6;
 				uSleep(5,0);
-				for(j = 0;j < 2;j++)
+				cmd = COOP1_LIGHT;
+				for(i = 0;i < 16;i++)	// there's 4 of these that aren't wired
 				{
-					cmd = COOP1_LIGHT;
-					for(i = 0;i < 16;i++)	// there's 4 of these that aren't wired
-					{
-						strcpy(buff,"ON\0");
-						msg_len = strlen(buff);
-						send_msg(sock,msg_len,buff,cmd);
-//						uSleep(0,TIME_DELAY/2);
-						uSleep(1,0);
-						strcpy(buff,"OFF\0");
-						msg_len = strlen(buff);
-						send_msg(sock,msg_len,buff,cmd);
-//						uSleep(0,TIME_DELAY/2);
-						uSleep(1,0);
-						cmd++;
-					}
+					strcpy(buff,"ON\0");
+					msg_len = strlen(buff);
+					send_msg(sock,msg_len,buff,cmd);
+					uSleep(0,TIME_DELAY/2);
+//					uSleep(1,0);
+					strcpy(buff,"OFF\0");
+					msg_len = strlen(buff);
+					send_msg(sock,msg_len,buff,cmd);
+					uSleep(0,TIME_DELAY/2);
+//					uSleep(1,0);
+					cmd++;
 				}
 			break;
 

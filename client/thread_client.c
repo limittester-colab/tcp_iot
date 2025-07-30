@@ -472,6 +472,7 @@ int main(int argc, char *argv[])
 
 	// send the client name to the server 
 	send_msg(30, client_name, 0, 0);
+	//void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)
 
 	while(close_program == 0)
 	{
