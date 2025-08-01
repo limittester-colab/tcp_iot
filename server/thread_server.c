@@ -143,15 +143,66 @@ void *new_sock_thread(void *socket_desc)
 	int *new_sock;
 	int new_socket;
 	struct sockaddr_in client;
+	int ret, msg_len;
+	UCHAR tempx[100];
+	int i,j;
+	char address_string[30];
+	int win_cl = 0;
 
+	memset(tempx, 0, sizeof(tempx));
+	memset(pthreads_list,0, sizeof(pthreads_list)*MAX_THREADS);
+	for(i = 0;i < MAX_THREADS;i++)
+		pthreads_list[i].sock = -1;
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
 	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
-		printf("no_threads: %d\n",no_threads);
+		strncpy(address_string,inet_ntoa(client.sin_addr),sizeof(address_string));
+//		printf("%s\n",address_string);
+		j = i = 0;
+		while(i < 3 && j < 17 && address_string[j] != 0)
+		{
+			if(address_string[j] == '.')
+				i++;
+//			printf("%c",address_string[j]);
+			j++;
+		}
+		memset(tempx,0,sizeof(tempx));
+		strncpy(tempx,&address_string[j],3);
+//		printf("%s\n",tempx);
+		if(strncmp(tempx,"158",3) == 0)
+		{
+			win_cl = 1;
+			printf("found win_cl\n");
+		}
+
+//		printf("no_threads: %d\n",no_threads);
 		new_sock = malloc(1);
 		*new_sock = new_socket;
-
+//		msg_len
+//		uSleep(5,0);
+		printf("start %d\n",new_socket);
+/*
+		for(i = 0;i < 40;i++)
+		{
+			ret = recv(new_socket,tempx,1,MSG_WAITALL);
+			printf("%02x\n",tempx[0]);
+			if(i > 15 && tempx[0] > 0)
+				printf(" %c  ",tempx[0]);
+		}
+		printf("\ndone\n");
+		close(new_socket);
+		exit(1);
+		ret = recv_tcp(new_socket, &tempx[0],msg_len+2,1);
+		printf("ret: %d\n");
+		for(i = 0;i < msg_len+4;i++)
+		{
+			printf("%02x ",tempx[i]);
+		}
+		printf("\ndone\n");
+		close(new_socket);
+		exit(1);
+*/
 //		msg_len = get_msg(new_sock);
 //		printf("msg_len: %d\n",msg_len);
 //		ret = recv_tcp(new_sock, &tempx[0],msg_len+2,1);
@@ -160,20 +211,21 @@ void *new_sock_thread(void *socket_desc)
 		if( pthread_create( &(pthreads_list[no_threads].listen_thread) , NULL ,  listen_thread , (void*) new_sock) < 0)
 		{
 			perror("could not create sniffer_thread");
-			return 1;
+			exit(1);
 		}
 /*
 		if( pthread_create( &(pthreads_list[no_threads].read_queue_thread) , NULL ,  read_queue_thread , (void*) new_sock) < 0)
 		{
 			perror("could not create thread");
-			return 1;
+			exit(1);
 		}
 */
 		pthreads_list[no_threads].sock = new_socket;
 		pthreads_list[no_threads].main_key = main_key + no_threads;
 		pthreads_list[no_threads].qid = msgget(pthreads_list[no_threads].main_key, IPC_CREAT | 0666);
+		pthreads_list[no_threads].win_cl = win_cl;
 //		printf("%d %d %d\n",pthreads_list[no_threads].qid, pthreads_list[no_threads].main_key, pthreads_list[no_threads].sock);
-		printf("sock: %d\n",new_socket);
+//		printf("sock: %d\n",new_socket);
 		no_threads++;
 /*
 		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
@@ -193,12 +245,13 @@ void *listen_thread(void *socket_desc)
 {
 	int msgtype = 1;
 	struct msgqbuf msg;
-	char tempx[200];
+	UCHAR tempx[100];
+	UCHAR tempx2[100];
 	int msg_len;
 	int ret;
 	UCHAR cmd;
 	UCHAR dest;
-	int i;
+	int i,j,k;
 	char client_name[30];
 	CLIENT_NAME *cl;
 	msg.mtype = msgtype;
@@ -214,40 +267,34 @@ void *listen_thread(void *socket_desc)
 //	printf("start %d\n", sock);
 	msg_len = 1;
 	memset(client_name, 0, sizeof(client_name));
+
 	skip = 0;
 
-	while(msg_len > 0)
+	for(;;)
 	{
-/*
-		if(index < 0)
+		index = 0;
+		printf("sock: %d\n",sock);
+		for(i = 0;i < MAX_THREADS;i++)
 		{
-			index = 0;
-			while(sock != pthreads_list[index].sock && index > MAX_THREADS)
-				index++;
-			printf("index: %d sock: %d\n",index,sock);
-			pindex = index;
+//			printf("index: %d sock: %d %d\n",index,pthreads_list[i].sock,pthreads_list[i].win_cl);
+			if(sock == pthreads_list[i].sock)
+				index = i;
 		}
-*/
-//		printf("sock: %d\n",sock);
-/*
-		if(sock == 6)
-		{
+		pindex = index;
+		printf("index: %d\n",index);
+		memset(tempx,0,sizeof(tempx));
+		printf("start get_msgb\n");
+		if(pthreads_list[index].win_cl == 1)
 			msg_len = get_msgb(sock);
-		}
-		else
-		{
-			msg_len = get_msg(sock);
-		}
-*/
-		msg_len = get_msg(sock);
-		ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
-//		printf("msg_len: %d\n",msg_len);
-//		printf("sock: %d\n",sock);
-//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
+		else msg_len = get_msg(sock);
+
+		printf("msg_len: %d\n",msg_len);
+		ret = recv_tcp(sock, &tempx[0],msg_len,1);
+		printf("\n\nret: %d\n",ret);
 		cmd = tempx[0];
 		dest = tempx[1];
 
-//		printf("cmd: %d dest: %d\n",cmd,dest);
+		printf("cmd: %d dest: %d\n",cmd,dest);
 /*
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
@@ -257,18 +304,34 @@ void *listen_thread(void *socket_desc)
 			printf("%02x ",tempx[i]);
 		printf("\n");
 */
+
+		if(pthreads_list[index].win_cl == 1)
+		{
+			memset(tempx2, 0, sizeof(tempx2));
+			k = 0;
+			for(j = 4;j < msg_len+4;j+=2)
+				tempx2[k++] = tempx[j];
+			msg_len /= 2;
+			msg_len -= 3;
+			memmove(tempx,tempx2,msg_len);
+			printf("tempx: %s\n",tempx);
+		}else
+		{
+			memmove(tempx,tempx+2,msg_len);
+			tempx[msg_len] = 0;
+		}
+
 		for(i = 2;i < msg_len+2;i++)
-			printf("%c",tempx[i]);
+			printf("%02x ",tempx[i]);
+		printf("\n");
+		for(i = 2;i < msg_len+2;i++)
+			printf("%c ",tempx[i]);
 		printf("\n");
 
-//		printf("cmd: %d\n",cmd);
-//		print_cmd(cmd);
-
-		memmove(tempx,tempx+2,msg_len);
-		tempx[msg_len] = 0;
 //		printf("tempx: %s\n",tempx);
 
-		if(client_name[0] == 0)
+//		if(client_name[0] == 0)
+		if(cmd == 0)
 		{
 			strcpy(client_name, tempx);
 			printf("this client is called: %s\n\n",client_name);
@@ -276,18 +339,26 @@ void *listen_thread(void *socket_desc)
 			//add_client_queue(client_name);
 			strcpy(pthreads_list[index].client_name,client_name);
 		}
-/*
+		if(pthreads_list[index].win_cl == 1 && cmd == SEND_CLIENT_LIST)
+		{
+			strcpy(client_name, tempx);
+			printf("this win client is called: %s\n\n",client_name);
+//			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
+			//add_client_queue(client_name);
+			strcpy(pthreads_list[index].client_name,client_name);
+		}
+
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
-*/
-//		printf("\n");
+
+		printf("\n\n");
 		index = dest;
 //		printf("msg_len: %d\n",msg_len);
-		if(msg_len > 0 && skip == 1)
+		if(msg_len > 0)
 		{
 			uSleep(0,TIME_DELAY/4);
 //			printf("send msg\n");
-			send_msg(pthreads_list[index].sock, msg_len, tempx, cmd);
+//			send_msg(pthreads_list[index].sock, msg_len, tempx, cmd);
 /*
 			memset(msg.mtext,0,sizeof(msg.mtext));
 			memcpy(msg.mtext,tempx,msg_len);
@@ -301,7 +372,11 @@ void *listen_thread(void *socket_desc)
 			printf("msgsnd ret: %d\n",ret);
 */
 		}
-		skip = 1;
+		if(msg_len < 0)
+		{
+			printf("bad msg_len: %d\n",msg_len);
+		}
+
 		index = 0;
 	}
 
@@ -622,7 +697,7 @@ int get_msg(int sd)
 
 	UCHAR preamble[10];
 	ret = recv_tcp(sd, preamble,8,1);
-	printf("ret: %d\n",ret);
+//	printf("ret: %d\n",ret);
 	if(ret < 0)
 	{
 //		printHexByte(ret);
@@ -631,7 +706,7 @@ int get_msg(int sd)
 	if(memcmp(preamble,pre_preamble,8) != 0)
 	{
 		printf("bad preamble\n");
-		for(i = 0;i < 10;i++)
+		for(i = 0;i < 20;i++)
 			printf("%02x ",preamble[i]);
 		printf("\n");
 		uSleep(1,0);

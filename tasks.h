@@ -22,6 +22,7 @@ typedef struct
 	int qid;
 	int sock;
 	char client_name[30];
+	int win_cl;
 }THREADS;
 
 struct msgqbuf
