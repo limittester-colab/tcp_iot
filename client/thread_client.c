@@ -200,42 +200,42 @@ void *tester_thread(void *socket_desc)
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
 				cmd = CHICK_LIGHT;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'b':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
 				cmd = CHICK_LIGHT;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'c':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
 				cmd = CHICK_HEATER;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'd':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
 				cmd = CHICK_HEATER;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'e':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
 				cmd = BENCH_12V_1;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'f':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
 				cmd = BENCH_12V_1;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 
@@ -299,14 +299,14 @@ void *tester_thread(void *socket_desc)
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
 				cmd = BENCH_LIGHT1;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'p':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
 				cmd = BENCH_LIGHT1;
-				dest = 0;
+				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'q':
@@ -323,7 +323,7 @@ void *tester_thread(void *socket_desc)
 */
 			break;
 			case 'r':
-				dest = 0;
+				dest = 4;
 				cmd = COOP1_LIGHT;
 				
 				for(i = 0;i < 16;i++)

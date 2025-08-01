@@ -23,6 +23,8 @@ typedef struct
 	int sock;
 	char client_name[30];
 	int win_cl;
+	char ipadd[4];
+	int index;
 }THREADS;
 
 struct msgqbuf
