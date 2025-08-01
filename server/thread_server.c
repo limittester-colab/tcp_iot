@@ -271,18 +271,18 @@ void *listen_thread(void *socket_desc)
 		
 		if(pthreads_list[index].win_cl == 1)
 		{
-			printf("win cl\n");
+//			printf("win cl\n");
 			msg_len = get_msgb(sock);
-			printf("msg_len: %d\n",msg_len);
+//			printf("msg_len: %d\n",msg_len);
 			ret = recv_tcp(sock, &tempx[0],msg_len,1);
-			printf("ret: %d\n",ret);
+//			printf("ret: %d\n",ret);
 		}
 		else
 		{
 			msg_len = get_msg(sock);
-			printf("msg_len: %d\n",msg_len);
+//			printf("msg_len: %d\n",msg_len);
 			ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
-			printf("ret: %d\n",ret);
+//			printf("ret: %d\n",ret);
 		}
 
 		for(i = 0;i < msg_len;i++)
@@ -320,39 +320,14 @@ void *listen_thread(void *socket_desc)
 		}
 		printf("cmd: %d dest: %d\n",cmd,dest);
 
-//		for(i = 2;i < msg_len+2;i++)
-//			printf("%02x ",tempx[i]);
-//		printf("\n");
-//		for(i = 2;i < msg_len+2;i++)
-//			printf("%c",tempx[i]);
-//		printf("\n");
-
-//		printf("tempx: %s\n",tempx);
-
-//		if(client_name[0] == 0)
-		if(cmd == 0)
+		if(cmd == SET_CLIENT_NAME)
 		{
 			strcpy(client_name, tempx);
 			printf("this client is called: %s\n\n",client_name);
 //			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
 			//add_client_queue(client_name);
 			strcpy(pthreads_list[index].client_name,client_name);
-		}
-		if(pthreads_list[index].win_cl == 1 && cmd == SEND_CLIENT_LIST)
-		{
-			strcpy(client_name, tempx);
-			printf("this win client is called: %s\n\n",client_name);
-//			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
-			//add_client_queue(client_name);
-			strcpy(pthreads_list[index].client_name,client_name);
-		}
-
-//		for(i = 0;i < msg_len;i++)
-//			printf("%02x ",tempx[i]);
-
-//		printf("\n\n");
-		index = -1;
-		if(cmd > 0)
+		}else
 		{
 			for(i = 0;i < MAX_THREADS;i++)
 			{
@@ -639,7 +614,7 @@ void *tester_thread(void *socket_desc)
 			case 'q':
 				strcpy(buff,"closing client program\0");
 				msg_len = strlen(buff);
-				cmd = 99;
+				cmd = DISCONNECT;
 				sock = 4;
 				send_msg(sock,msg_len,buff,cmd);
 				sock = 5;

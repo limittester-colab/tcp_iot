@@ -114,7 +114,7 @@ void *listen_thread(void *socket_desc)
 	//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
 	//		currently the ret is just 1 more than msg_len 
 			cmd = tempx[0];
-			if(cmd == 99)
+			if(cmd == DISCONNECT)
 			{
 				printf("closing program\n");
 				memset(tempx,0,sizeof(tempx));
@@ -471,7 +471,7 @@ int main(int argc, char *argv[])
 	}
 
 	// send the client name to the server 
-	send_msg(30, client_name, 0, 0);
+	send_msg(30, client_name, SET_CLIENT_NAME, 0);
 	//void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)
 
 	while(close_program == 0)
