@@ -23,7 +23,7 @@ void *send_thread(void *);
 void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 void *timer_thread(void *);
-void *tester_thread(void *);
+//void *tester_thread(void *);
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
 
@@ -83,12 +83,12 @@ int main(int argc , char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
+/*
 	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) socket_desc) < 0)
 	{
 		perror("could not create thread");
 		return 1;
 	}
-/*
 	if( pthread_create( &cmd_task_thread , NULL ,  get_host_cmd_task , (void*) test) < 0)
 	{
 		perror("could not create thread");
@@ -131,7 +131,7 @@ int main(int argc , char *argv[])
 //		pthread_kill(pthreads_list[i].read_queue_thread,0);
 	}
 	pthread_kill(sock_thread, 0);
-	pthread_kill(test_thread, 0);
+//	pthread_kill(test_thread, 0);
 //	pthread_kill(time_thread, 0);
 	printf("done\n");
 	return 0;
@@ -238,7 +238,7 @@ void *listen_thread(void *socket_desc)
 	CLIENT_NAME *cl;
 	msg.mtype = msgtype;
 	int index = -1;
-	int real_index;
+	int win_cl_index = -1;
 
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
@@ -264,8 +264,6 @@ void *listen_thread(void *socket_desc)
 			printf("index: %d sock: %d %d %s\n",index,pthreads_list[i].sock,pthreads_list[i].win_cl,pthreads_list[i].ipadd);
 		}
 */
-		real_index = pthreads_list[index].index;
-//		printf("index: %d real_index: %d\n",index,real_index);
 		memset(tempx,0,sizeof(tempx));
 		printf("start get_msgb\n");
 		
@@ -312,6 +310,7 @@ void *listen_thread(void *socket_desc)
 			msg_len -= 3;
 			memmove(tempx,tempx2,msg_len);
 			printf("win_cl tempx: %s\n",tempx);
+			win_cl_index = index;
 		}else
 		{
 			dest = tempx[1];
@@ -327,6 +326,33 @@ void *listen_thread(void *socket_desc)
 //			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
 			//add_client_queue(client_name);
 			strcpy(pthreads_list[index].client_name,client_name);
+		}else if(cmd == SEND_CLIENT_LIST && win_cl_index > 0)
+		{
+			printf("send client list\n");
+/*
+			for(i = 0;i < MAX_THREADS;i++)
+			{
+				if(pthreads_list[i].sock > 0)
+				{
+					sprintf(tempx,"%d %s %d", i, pthreads_list[i].ipadd, pthreads_list[i].sock);
+					send_msg(pthreads_list[win_cl_index].sock, strlen(tempx), tempx, cmd);
+					uSleep(1,0);
+				}
+			}
+*/
+		}else if(cmd == DISCONNECT)
+		{
+				for(i = 0;i < MAX_THREADS;i++)
+				{
+					if(pthreads_list[i].win_cl == 0 && pthreads_list[i].sock > 0)
+					{
+						printf("disconnecting %s\n",pthreads_list[i].ipadd);
+						send_msg(pthreads_list[i].sock, strlen(tempx), tempx, cmd);
+						pthreads_list[i].sock = -1;
+						uSleep(1,0);
+					}
+				}
+				exit(1);
 		}else
 		{
 			for(i = 0;i < MAX_THREADS;i++)
@@ -335,7 +361,7 @@ void *listen_thread(void *socket_desc)
 					index = i;
 			}
 	//		printf("msg_len: %d\n",msg_len);
-			if(msg_len > 0 && index > 0)
+			if(msg_len > 0 && index > 0 && index < MAX_THREADS)
 			{
 				uSleep(0,TIME_DELAY/4);
 				printf("send msg\n");

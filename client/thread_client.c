@@ -102,70 +102,60 @@ void *listen_thread(void *socket_desc)
 	msg_len = 1;
 //	printf("main_qid: %d\n",main_qid);
 
-	while(msg_len > 0)
+	for(;;)
 	{
 //		printf("sock: %d\n",global_socket);
 		msg_len = get_msg();
-//		printf("msg_len: %d\n",msg_len);
-		if(msg_len > 0)
+		ret = recv_tcp(&tempx[0],msg_len+1,1);
+		printf("ret: %d msg_len: %d\n",ret,msg_len);
+		cmd = tempx[0];
+		if(cmd == DISCONNECT)
 		{
-	//		printf("msg_len: %d\n",msg_len);
-			ret = recv_tcp(&tempx[0],msg_len+1,1);
-	//		printf("\n\nret: %d msg_len: %d\n",ret,msg_len);
-	//		currently the ret is just 1 more than msg_len 
-			cmd = tempx[0];
-			if(cmd == DISCONNECT)
-			{
-				printf("closing program\n");
-				memset(tempx,0,sizeof(tempx));
-				send_msg(0, tempx,cmd, 0);
-				msg_len = 0;
-				pthread_kill(plisten_thread,NULL);
-				pthread_kill(cmd_task_thread,NULL);
-				pthread_kill(pbasic_controls_task_thread,NULL);
-				pthread_kill(test_thread,NULL);
-				close(global_socket);
-				close_program = 1;
-				return;
-			}
+			printf("closing program\n");
+			memset(tempx,0,sizeof(tempx));
+			send_msg(0, tempx,cmd, 0);
+			msg_len = 0;
+			pthread_kill(plisten_thread,NULL);
+			pthread_kill(cmd_task_thread,NULL);
+			pthread_kill(pbasic_controls_task_thread,NULL);
+			pthread_kill(test_thread,NULL);
+			close(global_socket);
+			close_program = 1;
+			return;
+		}
 
-	/*
-			for(i = 0;i < msg_len;i++)
-				printf("%02x ",tempx[i]);
-			printf("\n");
+/*
+		for(i = 0;i < msg_len;i++)
+			printf("%02x ",tempx[i]);
+		printf("\n");
 
-			for(i = 1;i < msg_len+2;i++)
-				printf("%02x ",tempx[i]);
-			printf("\n");
-	*/
-			for(i = 1;i < msg_len+1;i++)
-				printf("%c",tempx[i]);
-			printf("\n");
+		for(i = 1;i < msg_len+2;i++)
+			printf("%02x ",tempx[i]);
+		printf("\n");
+*/
 
 //			print_cmd(cmd);
 
-			memmove(tempx,tempx+1,msg_len);
-			//printf("\n");
+		memmove(tempx,tempx+1,msg_len);
+		//printf("\n");
 /*
-			for(i = 0;i < msg_len;i++)
-				printf("%02x ",tempx[i]);
+		for(i = 0;i < msg_len;i++)
+			printf("%02x ",tempx[i]);
 */
 //			printf("\n");
 
-			memset(msg.mtext,0,sizeof(msg.mtext));
-			msg.mtext[0] = cmd;
-			msg.mtext[1] = (UCHAR)msg_len;
-			msg.mtext[2] = (UCHAR)(msg_len >> 4);
-			memcpy(msg.mtext + 3,tempx,msg_len);
+		memset(msg.mtext,0,sizeof(msg.mtext));
+		msg.mtext[0] = cmd;
+		msg.mtext[1] = (UCHAR)msg_len;
+		msg.mtext[2] = (UCHAR)(msg_len >> 4);
+		memcpy(msg.mtext + 3,tempx,msg_len);
 //			for(i = 0;i < msg_len + 3;i++)
 //				printf("%02x ",msg.mtext[i]);
 //			printf("\n");
-			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
-			if(ret == -1)
-			{
-				perror("msgsnd error");
-			}
-//			printf("msgsnd ret: %d\n\n",ret);
+		ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+		if(ret == -1)
+		{
+			perror("msgsnd error");
 		}
 	}
 
