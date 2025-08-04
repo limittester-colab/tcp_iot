@@ -215,16 +215,16 @@ void *new_sock_thread(void *socket_desc)
 		pthreads_list[no_threads].qid = msgget(pthreads_list[no_threads].main_key, IPC_CREAT | 0666);
 		pthreads_list[no_threads].win_cl = win_cl;
 		strncpy(pthreads_list[no_threads].ipadd,tempx,3);
+		if(strncmp(tempx,"158",3) == 0)
+			pthreads_list[no_threads].index = 0;
 		if(strncmp(tempx,"154",3) == 0)
 			pthreads_list[no_threads].index = 1;
 		if(strncmp(tempx,"147",3) == 0)
 			pthreads_list[no_threads].index = 2;
-		if(strncmp(tempx,"151",3) == 0)
-			pthreads_list[no_threads].index = 4;
-		if(strncmp(tempx,"158",3) == 0)
-			pthreads_list[no_threads].index = 0;
 		if(strncmp(tempx,"146",3) == 0)
 			pthreads_list[no_threads].index = 3;
+		if(strncmp(tempx,"151",3) == 0)
+			pthreads_list[no_threads].index = 4;
 
 		printf("start: %d %s %d\n",pthreads_list[no_threads].index, pthreads_list[no_threads].ipadd, pthreads_list[no_threads].sock);
 		printf("no_threads: %d\n",no_threads);
@@ -376,15 +376,13 @@ void *listen_thread(void *socket_desc)
 			}
 		}else
 		{
-			i = 0;
-			printf("dest: %d\n",dest);
-			index = pthreads_list[dest].index;
-			printf("index: %d\n", index);
+			i = -1;
+			while(dest != pthreads_list[i].index && i < MAX_THREADS)
+				i++;
 
-//			uSleep(0,TIME_DELAY/2);
-			printf("sock: %d index %d\n",pthreads_list[index].sock,index);
+			printf("sock: %d index %d\n",pthreads_list[i].sock,i);
 			if(pthreads_list[index].sock > 0)
-				send_msg(pthreads_list[index].sock, msg_len, tempx, cmd);
+				send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
 	/*
 				memset(msg.mtext,0,sizeof(msg.mtext));
 				memcpy(msg.mtext,tempx,msg_len);

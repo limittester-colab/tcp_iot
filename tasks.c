@@ -578,7 +578,7 @@ int change_output(int index, int onoff)
 	// last 4 - 280 & 282 (281 doesn't work)
 //printf("%d %d %d\n",onoff, index, bank);
 
-	printf("bank: %d index: %d index2 %d\r\n",bank,index, index2);
+//	printf("bank: %d index: %d index2 %d\r\n",bank,index, index2);
 #ifndef SERVER_146
 	switch(bank)
 	{
