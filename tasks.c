@@ -128,7 +128,7 @@ enum input_types
 
 enum output_types
 {
-#ifdef SERVER_146
+#ifdef CLIENT_146
 	DESK_LIGHTa,
 	EAST_LIGHTa,			// bank 0
 	NORTHWEST_LIGHTa,
@@ -659,7 +659,7 @@ UCHAR basic_controls_task(int *test)
 
 		switch(cmd)
 		{
-#ifdef SERVER_146
+#ifdef CLIENT_146
 			case DESK_LIGHT:
 				change_output(DESK_LIGHTa,(int)onoff);
 				usleep(_500MS);

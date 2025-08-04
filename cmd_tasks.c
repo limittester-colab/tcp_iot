@@ -93,7 +93,7 @@ void add_msg_queue(UCHAR cmd, UCHAR onoff)
 		perror("msgsnd error");
 		exit(EXIT_FAILURE);
 	}
-//	printf("add_msg_queue\n");
+	printf("add_msg_queue\n");
 //	pthread_mutex_unlock(&msg_queue_lock);
 //	printf("add: %d %x\r\n",msg_queue_ptr,cmd);
 }
@@ -388,7 +388,7 @@ UCHAR get_host_cmd_task(int *test)
 
 			switch(cmd)
 			{
-#ifdef SERVER_146
+#ifdef CLIENT_146
 				case DESK_LIGHT:
 				case EAST_LIGHT:
 				case NORTHWEST_LIGHT:

@@ -383,7 +383,7 @@ int main(int argc, char *argv[])
 		printf("errno: %d\n",errno);
 		exit(1);
 	}
-//	printf("main_qid: %d\n",main_qid);
+	printf("main_qid: %d\n",main_qid);
 
 	basic_controls_key = BASIC_CONTROLS_KEY;
 	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
 		printf("errno: %d\n",errno);
 		exit(1);
 	}
-//	printf("basic_controls_qid: %d\n",main_qid);
+	printf("basic_controls_qid: %d\n",main_qid);
 
 	strcpy(buff2,"test send\0");
 	memset(client_name, 0, sizeof(client_name));

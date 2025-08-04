@@ -223,6 +223,9 @@ void *new_sock_thread(void *socket_desc)
 			pthreads_list[no_threads].index = 4;
 		if(strncmp(tempx,"158",3) == 0)
 			pthreads_list[no_threads].index = 0;
+		if(strncmp(tempx,"146",3) == 0)
+			pthreads_list[no_threads].index = 3;
+
 		printf("start: %d %s %d\n",pthreads_list[no_threads].index, pthreads_list[no_threads].ipadd, pthreads_list[no_threads].sock);
 		printf("no_threads: %d\n",no_threads);
 //		printf("sock: %d\n",new_socket);
@@ -378,7 +381,7 @@ void *listen_thread(void *socket_desc)
 			index = pthreads_list[dest].index;
 			printf("index: %d\n", index);
 
-			uSleep(0,TIME_DELAY/2);
+//			uSleep(0,TIME_DELAY/2);
 			printf("sock: %d index %d\n",pthreads_list[index].sock,index);
 			if(pthreads_list[index].sock > 0)
 				send_msg(pthreads_list[index].sock, msg_len, tempx, cmd);

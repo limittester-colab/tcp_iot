@@ -10,3 +10,53 @@ third_client
 start: 0 158 7
 Windows Client
 
+
+ClientAvail:
+
+0 wincl
+1 cabin 154
+2 testbench 147
+3 aux_client 243
+4 Outdoor 151
+5 Garage 146
+6 239 server
+
+<Table>
+	<ClientAvail>
+		<ip_addr>158</ip_addr>
+		<label>WINDOWS-11A</label>
+		<socket>-1</socket>
+		<type>0</type>
+	</ClientAvail>
+	<ClientAvail>
+		<ip_addr>154</ip_addr>
+		<label>TS-client154</label>
+		<socket>-1</socket>
+		<type>1</type>
+	</ClientAvail>
+	<ClientAvail>
+		<ip_addr>147</ip_addr>
+		<label>TS-client147</label>
+		<socket>-1</socket>
+		<type>1</type>
+	</ClientAvail>
+	<ClientAvail>
+		<ip_addr>243</ip_addr>
+		<label>Aux-Client</label>
+		<socket>-1</socket>
+		<type>1</type>
+	</ClientAvail>
+	<ClientAvail>
+		<ip_addr>151</ip_addr>
+		<label>TS-Client151</label>
+		<socket>-1</socket>
+		<type>1</type>
+	</ClientAvail>
+	<ClientAvail>
+		<ip_addr>239</ip_addr>
+		<label>TS-Server</label>
+		<socket>-1</socket>
+		<type>2</type>
+	</ClientAvail>
+</Table>
+
