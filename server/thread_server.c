@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+//#include <pigpio.h>
 
 #include "cmd_types.h"
 #include "mytypes.h"
@@ -55,7 +56,21 @@ int main(int argc , char *argv[])
 	main_key = MAIN_KEY;
 	main_qid = msgget(main_key, IPC_CREAT | 0666);
 	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
-
+/*
+	if(gpioInitialise() < 0)
+	{
+		printf("init failed\n");
+		exit(1);
+	}
+	rc = serOpen("/dev/ttyAMA0",115200,0);
+	if(rc < 0)
+	{
+		printf("could not open port\n");
+		exit(1);
+	}
+	handle = (unsigned int)rc;
+	xbyte = 0x21;
+*/
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
 	if (socket_desc == -1)
 	{
@@ -225,6 +240,8 @@ void *new_sock_thread(void *socket_desc)
 			pthreads_list[no_threads].index = 3;
 		if(strncmp(tempx,"151",3) == 0)
 			pthreads_list[no_threads].index = 4;
+//		if(strncmp(tempx,"241",3) == 0)
+//			pthreads_list[no_threads].index = 5;
 
 		printf("start: %d %s %d\n",pthreads_list[no_threads].index, pthreads_list[no_threads].ipadd, pthreads_list[no_threads].sock);
 		printf("no_threads: %d\n",no_threads);
@@ -286,22 +303,25 @@ void *listen_thread(void *socket_desc)
 		}
 */
 		memset(tempx,0,sizeof(tempx));
-		printf("start get_msgb\n");
+		printf("start get_msg\n");
 		
 		if(pthreads_list[index].win_cl == 1)
 		{
 //			printf("win cl\n");
 			msg_len = get_msgb(sock);
-//			printf("msg_len: %d\n",msg_len);
+			if(msg_len < 0)
+				break;
+			printf("msg_len: %d\n",msg_len);
 			ret = recv_tcp(sock, &tempx[0],msg_len,1);
-//			printf("ret: %d\n",ret);
+			printf("ret: %d\n",ret);
 		}
 		else
 		{
 			msg_len = get_msg(sock);
-//			printf("msg_len: %d\n",msg_len);
-			ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
-//			printf("ret: %d\n",ret);
+			printf("msg_len: %d\n",msg_len);
+			if(msg_len >= 0)
+				ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
+			printf("ret: %d\n",ret);
 		}
 /*
 		for(i = 0;i < msg_len;i++)
@@ -381,21 +401,11 @@ void *listen_thread(void *socket_desc)
 				i++;
 
 			printf("sock: %d index %d\n",pthreads_list[i].sock,i);
-			if(pthreads_list[index].sock > 0)
+			printf("%s\n",tempx);
+/*
+			if(pthreads_list[index].sock > 0 && index > 0)
 				send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
-	/*
-				memset(msg.mtext,0,sizeof(msg.mtext));
-				memcpy(msg.mtext,tempx,msg_len);
-				ret = 0;
-				ret = msgsnd(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
-
-				if(ret == -1)
-				{
-					perror("msgsnd error");
-				}
-				printf("msgsnd ret: %d\n",ret);
-	*/
-
+*/
 		}
 		if(msg_len < 0)
 		{
@@ -726,7 +736,7 @@ int get_msg(int sd)
 	if(ret < 0)
 	{
 //		printHexByte(ret);
-		printf("%02x ",ret);
+		printf("%d\n",ret);
 	}
 	if(memcmp(preamble,pre_preamble,8) != 0)
 	{
@@ -734,7 +744,7 @@ int get_msg(int sd)
 		for(i = 0;i < 20;i++)
 			printf("%02x ",preamble[i]);
 		printf("\n");
-		uSleep(1,0);
+//		uSleep(1,0);
 		return -1;
 	}
 	ret = recv_tcp(sd, &low,1,1);
@@ -877,7 +887,7 @@ int put_sock(int sd, UCHAR *buf,int buflen, int block, char *errmsg)
 		strcpy(errmsg,strerror(errno));
 		sprintf(extra_msg," %d\n",errno);
 		strcat(errmsg,extra_msg);
-		strcat(errmsg,"\nput_sock\n");
+		strcat(errmsg,"put_sock\n");
 //		close_tcp();
 	}else strcpy(errmsg,"Success\0");
 	return rc;
@@ -888,11 +898,20 @@ int get_sock(int sd, UCHAR *buf, int buflen, int block, char *errmsg)
 {
 	int rc;
 	char extra_msg[10];
+	int i;
 	if(block)
 		rc = recv(sd,buf,buflen,MSG_WAITALL);
 	else
 		rc = recv(sd,buf,buflen,MSG_DONTWAIT);
-	if(rc < 0 && errno != 11)
+//	if(rc < 0 && errno != 11)
+/*
+	for(i = 0;i < rc;i++)
+	{
+		printf("%02x ",buf[i]);
+	}
+	printf("\n");
+*/
+	if(rc < 0)
 	{
 		strcpy(errmsg,strerror(errno));
 		sprintf(extra_msg," %d",errno);
