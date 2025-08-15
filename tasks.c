@@ -57,7 +57,8 @@ enum client_list	// if adding to this list, change MAX_CLIENTS above
 	_147,			// Testbench
 	_243,			// aux_client (runs on a PC linux box)
 	_151,			// extra TS-4600 card
-	_SERVER			// Garage (146)
+	_146,			// Garage 
+	_SERVER			// 239 (Raspberry Pi)
 }CLIENT_LIST2;
 
 ollist_t oll;
@@ -137,11 +138,14 @@ enum output_types
 	WEST_LIGHTa,
 	NORTHEAST_LIGHTa,
 	SOUTHWEST_LIGHTa,
-	WATER_PUMPa,
+	TEST_OUTPUT1,
+	TEST_OUTPUT2,
+	TEST_OUTPUT3,
+	WATER_HEATERa,
 	WATER_VALVE1a,
 	WATER_VALVE2a,
 	WATER_VALVE3a,
-	WATER_HEATERa
+	WATER_PUMPa
 #endif 
 #ifdef CL_151
 #warning "CL_151 defined"
@@ -168,19 +172,15 @@ enum output_types
 	CHICK_HEATERa,
 	BENCH_12V_1a,
 	BENCH_12V_2a,
-	BLANKa,
 	BENCH_5V_1a,
 	BENCH_5V_2a,
 	BENCH_3V3_1a,
 	BENCH_3V3_2a,
+	BLANK2A,
+	BLANK2B,
 	BENCH_LIGHT1a,
 	BENCH_LIGHT2a,
-	BATTERY_HEATERa,
-	TEST_OUTPUT3,		// these all have the wires
-	TEST_OUTPUT4,		// from io card to relay 
-	TEST_OUTPUT5,		// but that's it
-	TEST_OUTPUT6,
-	TEST_OUTPUT7
+	BATTERY_HEATERa
 #endif 
 #ifdef CL_154
 #warning "CL_154 defined"
@@ -205,6 +205,13 @@ enum output_types
 	TEST_OUTPUT18,
 	TEST_OUTPUT19
 #endif 
+#ifdef SERVER_146
+#warning "SERVER_146 defined"
+	TEST_OUTPUT1,
+	TEST_OUTPUT2,
+	TEST_OUTPUT3
+#endif
+
 }OUTPUT_TYPES;
 
 int switch_status[10];
@@ -652,8 +659,8 @@ UCHAR basic_controls_task(int *test)
 		cmd = msg.mtext[0];
 		onoff = msg.mtext[1];
 		
-		printf("basic controls: ");
-		print_cmd(cmd);
+//		printf("basic controls: ");
+//		print_cmd(cmd);
 		//printf("%d\n",onoff);
 		//usleep(_5MS);
 

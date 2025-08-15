@@ -50,7 +50,8 @@ enum client_list	// if adding to this list, change MAX_CLIENTS above
 	_147,			// Testbench
 	_243,			// aux_client (runs on a PC linux box)
 	_151,			// extra TS-4600 card
-	_SERVER			// Garage (146)
+	_146,			// Garage 
+	_SERVER			// 239 (Raspberry Pi)
 }CLIENT_LIST;
 
 //UCHAR msg_buf[SERIAL_BUFF_SIZE];
@@ -73,9 +74,10 @@ char *lookup_raw_data(int val)
 */
 void print_cmd(UCHAR cmd)
 {
-	if(cmd > NO_CMDS)
+	if(cmd >= NO_CMDS)
+	{
 		printf("unknown cmd: %d\n",cmd);
-	printf("%d %s\n",cmd, cmd_array[cmd].cmd_str);
+	}else printf("%d %s\n",cmd, cmd_array[cmd].cmd_str);
 }
 /*********************************************************************/
 void add_msg_queue(UCHAR cmd, UCHAR onoff)
@@ -93,7 +95,7 @@ void add_msg_queue(UCHAR cmd, UCHAR onoff)
 		perror("msgsnd error");
 		exit(EXIT_FAILURE);
 	}
-	printf("add_msg_queue\n");
+//	printf("add_msg_queue\n");
 //	pthread_mutex_unlock(&msg_queue_lock);
 //	printf("add: %d %x\r\n",msg_queue_ptr,cmd);
 }
@@ -154,16 +156,20 @@ UCHAR get_host_cmd_task(int *test)
 	printf("starting server\n");
 	this_client_id = _SERVER;
 #endif
+#ifdef CLIENT_146
+	printf("starting 146 (garage)\n");
+	this_client_id = _146;
+#endif
 #ifdef CL_147
-	printf("starting 147\n");
+	printf("starting 147 (studio)\n");
 	this_client_id = _147;
 #endif 
 #ifdef CL_154
-	printf("starting 154\n");
+	printf("starting 154 (cabin)\n");
 	this_client_id = _154;
 #endif 
 #ifdef CL_151
-	printf("starting 151\n");
+	printf("starting 151 (outdoors)\n");
 	this_client_id = _151;
 #endif 
 #if 1

@@ -1,5 +1,0 @@
-bug list
-
-- SEND_CLIENT_LIST not getting to win client 
-- when quitting, 239 gets a shit-load of bad msg's 
-- assign function key not working for either garage or F5 or F7 

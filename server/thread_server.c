@@ -323,11 +323,11 @@ void *listen_thread(void *socket_desc)
 				ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
 			printf("ret: %d\n",ret);
 		}
-/*
+
 		for(i = 0;i < msg_len;i++)
 			printf("%02x ",tempx[i]);
 		printf("\n");
-*/
+
 		cmd = tempx[0];
 //		print_cmd(cmd);
 
@@ -402,10 +402,9 @@ void *listen_thread(void *socket_desc)
 
 			printf("sock: %d index %d\n",pthreads_list[i].sock,i);
 			printf("%s\n",tempx);
-/*
+
 			if(pthreads_list[index].sock > 0 && index > 0)
 				send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
-*/
 		}
 		if(msg_len < 0)
 		{
@@ -744,7 +743,7 @@ int get_msg(int sd)
 		for(i = 0;i < 20;i++)
 			printf("%02x ",preamble[i]);
 		printf("\n");
-//		uSleep(1,0);
+		uSleep(1,0);
 		return -1;
 	}
 	ret = recv_tcp(sd, &low,1,1);
@@ -796,16 +795,13 @@ int get_msgb(int sd)
 	}
 	if(memcmp(preamble,pre_preamble,8) != 0)
 		return -1;
-
 	low = preamble[8];
 	high = preamble[9];
 	len = (int)(high);
 	len <<= 8;
 	len |= (int)low;
-
 	return len;
 }
-
 /*********************************************************************/
 void send_msgb(int sd, int msg_len, UCHAR *msg, UCHAR msg_type)
 {

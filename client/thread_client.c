@@ -179,7 +179,7 @@ void *tester_thread(void *socket_desc)
 	int i,j;
 	UCHAR dest;
 
-	printf("starting tester thread\n");
+//	printf("starting tester thread\n");
 	do
 	{
 		key = getc(stdin);
