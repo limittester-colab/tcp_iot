@@ -546,8 +546,8 @@ UCHAR get_host_cmd_task(int *test)
 					}
 					break;
 
-				case SEND_CLIENT_LIST:
-					//printf("send client list :");
+				case UPDATE_CLIENT_TABLE:
+					printf("update client table in cmd_tasks.c");
 //					send_sock_msg(tempx, msg_len, SEND_CLIENT_LIST, _SERVER);
 					break;
 

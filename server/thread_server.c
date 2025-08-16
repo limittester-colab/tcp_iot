@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <signal.h>
 //#include <pigpio.h>
 
 #include "cmd_types.h"
@@ -32,19 +33,20 @@ int no_threads;
 
 THREADS pthreads_list[MAX_THREADS];
 
-void add_client_queue(char client_name)
+/* void add_client_queue(char client_name)
 {
 	printf("client name: %s\n",client_name);
-}
+} */
 #endif
 int main(int argc , char *argv[])
 {
-	int socket_desc ,  c;
-	struct sockaddr_in server;
+//	int socket_desc ,  c;
+//	struct sockaddr_in server;
 	char *message;
 	int msg_len;
 	char tempx[30];
 	int ret;
+	void *pret;
 	int i;
 	int test;
 	pthread_t sock_thread;
@@ -53,8 +55,8 @@ int main(int argc , char *argv[])
 	//Create socket
 	no_threads = 0;
 	basic_controls_key = BASIC_CONTROLS_KEY;
-	main_key = MAIN_KEY;
-	main_qid = msgget(main_key, IPC_CREAT | 0666);
+//	main_key = MAIN_KEY;
+//	main_qid = msgget(main_key, IPC_CREAT | 0666);
 	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
 /*
 	if(gpioInitialise() < 0)
@@ -71,49 +73,16 @@ int main(int argc , char *argv[])
 	handle = (unsigned int)rc;
 	xbyte = 0x21;
 */
-	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
-	if (socket_desc == -1)
-	{
-		printf("Could not create socket");
-	}
-
-	//Prepare the sockaddr_in structure
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = INADDR_ANY;
-	server.sin_port = htons( 5193 );
-
-	//Bind
-	if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
-	{
-		puts("bind failed");
-		return 1;
-	}
-	puts("bind done");
-
-	//Listen
-	listen(socket_desc , 3);
-
 	for(i = 0;i < MAX_THREADS;i++)
 	{
 		pthreads_list[i].sock = -1;
-		pthreads_list[i].index = -1;
-		memset(pthreads_list[i].client_name,0, 30);
+//		memset(pthreads_list[i].client_name,0,30);
 	}
 
-/*		
-	key_t main_key;
-	int qid;
-	int sock;
-	char client_name[30];
-	int win_cl;
-	char ipadd[4];
-	int index;
-*/
-
-	if( pthread_create( &sock_thread , NULL ,  new_sock_thread , (void*) socket_desc) < 0)
+	if( pthread_create( &sock_thread , NULL ,  new_sock_thread , (void*) pret) < 0)
 	{
 		perror("could not create thread");
-		return 1;
+//		return 1;
 	}
 /*
 	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) socket_desc) < 0)
@@ -132,16 +101,12 @@ int main(int argc , char *argv[])
 		return 1;
 	}
 */
-
-/*
-	printf("test\n");
-
-	if( pthread_create( &time_thread , NULL ,  timer_thread , (void*) socket_desc) < 0)
+ 	if( pthread_create( &time_thread , NULL ,  timer_thread , (void*) pret) < 0)
 	{
 		perror("could not create thread");
-		return 1;
+//		return 1;
 	}
-*/
+
 /*
 	if (new_socket<0)
 	{
@@ -150,7 +115,11 @@ int main(int argc , char *argv[])
 	}
 */
 //	printf("total no_threads 1: %d\n",no_threads);
-	while(no_threads < 1);
+	while(no_threads < 1)
+	{
+		uSleep(1,0);
+		printf("sleep ");
+	}
 //	printf("total no_threads 2: %d\n",no_threads);
 
 	for(i = 0;i < no_threads;i++)
@@ -164,27 +133,46 @@ int main(int argc , char *argv[])
 	}
 	pthread_kill(sock_thread, 0);
 //	pthread_kill(test_thread, 0);
-//	pthread_kill(time_thread, 0);
+	pthread_kill(time_thread, 0);
 	printf("done\n");
 	return 0;
 }
 
-void *new_sock_thread(void *socket_desc)
+void *new_sock_thread(void *ret)
 {
-	int c;
-	int *new_sock;
-	int new_socket;
-	struct sockaddr_in client;
-	int ret, msg_len;
+	int socket_desc , new_socket , c , *new_sock;
+	struct sockaddr_in server , client;
+
+	int msg_len;
 	UCHAR tempx[100];
 	int i,j;
 	char address_string[30];
 	int win_cl = 0;
 
 	memset(tempx, 0, sizeof(tempx));
-	memset(pthreads_list,0, sizeof(pthreads_list)*MAX_THREADS);
-	for(i = 0;i < MAX_THREADS;i++)
-		pthreads_list[i].sock = -1;
+
+	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
+	if (socket_desc == -1)
+	{
+		printf("Could not create socket");
+	}
+	
+	//Prepare the sockaddr_in structure
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port = htons( 5193 );
+	
+	//Bind
+	if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
+	{
+		puts("bind failed");
+	}
+	puts("bind done");
+	
+	//Listen
+	listen(socket_desc , 3);
+	
+	//Accept and incoming connection
 	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
 	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
@@ -205,8 +193,8 @@ void *new_sock_thread(void *socket_desc)
 		if(strncmp(tempx,"158",3) == 0)
 		{
 			win_cl = 1;
-			printf("found win_cl\n");
-		}
+//			printf("found win_cl\n");
+		}else win_cl = 0;
 
 //		printf("no_threads: %d\n",no_threads);
 		new_sock = malloc(1);
@@ -231,15 +219,25 @@ void *new_sock_thread(void *socket_desc)
 		pthreads_list[no_threads].win_cl = win_cl;
 		strncpy(pthreads_list[no_threads].ipadd,tempx,3);
 		if(strncmp(tempx,"158",3) == 0)
+		{
 			pthreads_list[no_threads].index = 0;
+		}
 		if(strncmp(tempx,"154",3) == 0)
+		{
 			pthreads_list[no_threads].index = 1;
+		}
 		if(strncmp(tempx,"147",3) == 0)
+		{
 			pthreads_list[no_threads].index = 2;
+		}
 		if(strncmp(tempx,"146",3) == 0)
+		{
 			pthreads_list[no_threads].index = 3;
+		}
 		if(strncmp(tempx,"151",3) == 0)
+		{
 			pthreads_list[no_threads].index = 4;
+		}
 //		if(strncmp(tempx,"241",3) == 0)
 //			pthreads_list[no_threads].index = 5;
 
@@ -309,11 +307,15 @@ void *listen_thread(void *socket_desc)
 		{
 //			printf("win cl\n");
 			msg_len = get_msgb(sock);
-			if(msg_len < 0)
-				break;
+			
 			printf("msg_len: %d\n",msg_len);
 			ret = recv_tcp(sock, &tempx[0],msg_len,1);
 			printf("ret: %d\n",ret);
+			if(win_cl_index < 0)
+			{
+				win_cl_index = index;
+				printf("win_cl_index: %d\n",win_cl_index);
+			}
 		}
 		else
 		{
@@ -321,6 +323,7 @@ void *listen_thread(void *socket_desc)
 			printf("msg_len: %d\n",msg_len);
 			if(msg_len >= 0)
 				ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
+			else uSleep(5,0);
 			printf("ret: %d\n",ret);
 		}
 
@@ -352,7 +355,6 @@ void *listen_thread(void *socket_desc)
 			msg_len -= 3;
 			memmove(tempx,tempx2,msg_len);
 			printf("win_cl tempx: %s\n",tempx);
-			win_cl_index = index;
 		}else
 		{
 			dest = tempx[1];
@@ -368,49 +370,51 @@ void *listen_thread(void *socket_desc)
 //			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
 			//add_client_queue(client_name);
 			strcpy(pthreads_list[index].client_name,client_name);
-		}else if(cmd == SEND_CLIENT_LIST && win_cl_index > 0)
+		}else if(cmd == SEND_CLIENT_LIST && win_cl_index > 0)// SEND_CLIENT_LIST
 		{
-			printf("send client list\n");
-/*
 			for(i = 0;i < MAX_THREADS;i++)
 			{
-				if(pthreads_list[i].sock > 0)
+//				printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
+				if(pthreads_list[i].sock > 0 && pthreads_list[i].win_cl == 0)
 				{
-					sprintf(tempx,"%d %s %d", i, pthreads_list[i].ipadd, pthreads_list[i].sock);
-					send_msg(pthreads_list[win_cl_index].sock, strlen(tempx), tempx, cmd);
-					uSleep(1,0);
+					sprintf(tempx,"%d %s %d", pthreads_list[i].index, pthreads_list[i].ipadd, pthreads_list[i].sock);
+					printf("%s\n",tempx);
+//					printf("%d\n",pthreads_list[win_cl_index].sock);
+					msg_len = strlen(tempx);
+					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
+					uSleep(0,TIME_DELAY/2);
 				}
 			}
-*/
-		}else if(cmd == DISCONNECT)
+		}else if(cmd == UPDATE_STATUS)
 		{
+			printf("staus: %s\n",tempx);
 			for(i = 0;i < MAX_THREADS;i++)
 			{
-				if(pthreads_list[i].win_cl == 0 && pthreads_list[i].sock > 0)
+				if(strcmp(pthreads_list[i].client_name,tempx) == 0)
 				{
-					printf("disconnecting %s\n",pthreads_list[i].ipadd);
-					send_msg(pthreads_list[i].sock, strlen(tempx), tempx, cmd);
-					pthreads_list[i].sock = -1;
-					uSleep(1,0);
+					printf("%s\n",pthreads_list[i].ipadd);
 				}
 			}
 		}else
 		{
-			i = -1;
+			// EVERYTHING ELSE
+			i = 0;
 			while(dest != pthreads_list[i].index && i < MAX_THREADS)
 				i++;
 
-			printf("sock: %d index %d\n",pthreads_list[i].sock,i);
+			printf("sock: %d index %d\n",pthreads_list[i].sock,pthreads_list[i].index);
 			printf("%s\n",tempx);
 
 			if(pthreads_list[index].sock > 0 && index > 0)
 				send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
+//			pthreads_list[i].sock = -1;
+//			pthread_kill(pthreads_list[i].listen_thread,0);
 		}
 		if(msg_len < 0)
 		{
 			printf("bad msg_len: %d\n",msg_len);
+			exit(1);
 		}
-
 		index = 0;
 	}
 
@@ -429,8 +433,6 @@ void *listen_thread(void *socket_desc)
 
 	//Free the socket pointer
 
-//	pthread_kill(pthreads_list[pindex].read_queue_thread,0);
-	free(socket_desc);
 	return 0;
 }
 
@@ -490,44 +492,42 @@ void *read_queue_thread(void *socket_desc)
 	free(socket_desc);
 }
 
-void *timer_thread(void *socket_desc)
+void *timer_thread(void *ret)
 {
 	char buff[30];
 	char buff2[30];
 	int n;
 	int val;
-	int cmd = 20;
+	int cmd = SEND_STATUS;
 	int i;
 	int j;
 
 	strcpy(buff,"timer\0");
 
-//	sock = *(int*)socket_desc;
-	printf("timer thread started\n");
-	uSleep(5,0);
+	uSleep(10,0);
 	j = 0;
+	printf("timer thread started\n");
 	for(;;)
 	{
 		memset(buff2,0,sizeof(buff2));
-		uSleep(1,0);
+		uSleep(5,0);
 		for(i = 0;i < no_threads;i++)
 		{
 			if(pthreads_list[i].sock > 0)
 			{
-				printf("sock: %d\n", pthreads_list[i].sock);
+//				printf("sock: %d\n", pthreads_list[i].sock);
 				val = i;
-				sprintf(buff2, "%s %d %d",buff, val,j);
-				printf("%s\n",buff2);
+//				sprintf(buff2, "%s %d %d",buff, val,j);
+//				printf("%s\n",buff2);
 				n = strlen(buff2);
 				send_msg(pthreads_list[i].sock, n, buff2, cmd);
 				j++;
-				uSleep(1,0);
+				uSleep(5,0);
 			}
 			uSleep(4,0);
 		}
 
 	}
-	free(socket_desc);
 }
 
 void *tester_thread(void *socket_desc)
@@ -845,6 +845,7 @@ int recv_tcp(int sd, UCHAR *str, int strlen,int block)
 	if(ret < 0 && (strcmp(errmsg,"Success") != 0))
 	{
 		printf(errmsg);
+		uSleep(1,0);
 	}
 	return ret;
 }

@@ -22,6 +22,7 @@
 #define SA struct sockaddr
 
 static int global_socket;
+static 	char client_name[30];
 
 void *listen_thread(void *);
 void *send_queue_thread(void *);
@@ -93,6 +94,7 @@ void *listen_thread(void *socket_desc)
 	int i;
 	struct msgqbuf msg;
 	msg.mtype = 1;
+	UCHAR dest;
 
 	//Get the socket descriptor
 	int read_size;
@@ -113,7 +115,7 @@ void *listen_thread(void *socket_desc)
 		{
 			printf("closing program\n");
 			memset(tempx,0,sizeof(tempx));
-			send_msg(0, tempx,cmd, 0);
+//			send_msg(0, tempx,cmd, 0);
 			msg_len = 0;
 			pthread_kill(plisten_thread,NULL);
 			pthread_kill(cmd_task_thread,NULL);
@@ -122,40 +124,30 @@ void *listen_thread(void *socket_desc)
 			close(global_socket);
 			close_program = 1;
 			return;
-		}
-
-/*
-		for(i = 0;i < msg_len;i++)
-			printf("%02x ",tempx[i]);
-		printf("\n");
-
-		for(i = 1;i < msg_len+2;i++)
-			printf("%02x ",tempx[i]);
-		printf("\n");
-*/
-
-//			print_cmd(cmd);
-
-		memmove(tempx,tempx+1,msg_len);
-		//printf("\n");
-/*
-		for(i = 0;i < msg_len;i++)
-			printf("%02x ",tempx[i]);
-*/
-//			printf("\n");
-
-		memset(msg.mtext,0,sizeof(msg.mtext));
-		msg.mtext[0] = cmd;
-		msg.mtext[1] = (UCHAR)msg_len;
-		msg.mtext[2] = (UCHAR)(msg_len >> 4);
-		memcpy(msg.mtext + 3,tempx,msg_len);
-//			for(i = 0;i < msg_len + 3;i++)
-//				printf("%02x ",msg.mtext[i]);
-//			printf("\n");
-		ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
-		if(ret == -1)
+		}else if(cmd == SEND_STATUS)
 		{
-			perror("msgsnd error");
+			strcpy(tempx,client_name);
+			printf("%s\n",tempx);
+			msg_len = strlen(tempx);
+			cmd = UPDATE_STATUS;
+			dest = 5;	// to server
+			send_msg(msg_len, tempx, cmd, dest);
+		}else 
+		{
+			memmove(tempx,tempx+1,msg_len);
+			memset(msg.mtext,0,sizeof(msg.mtext));
+			msg.mtext[0] = cmd;
+			msg.mtext[1] = (UCHAR)msg_len;
+			msg.mtext[2] = (UCHAR)(msg_len >> 4);
+			memcpy(msg.mtext + 3,tempx,msg_len);
+				for(i = 0;i < msg_len + 3;i++)
+					printf("%02x ",msg.mtext[i]);
+				printf("\n");
+			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
+			if(ret == -1)
+			{
+				perror("msgsnd error");
+			}
 		}
 	}
 
@@ -366,7 +358,6 @@ int main(int argc, char *argv[])
 	char buff[200];
 	char buff2[20];
 	int n = 0;
-	char client_name[30];
 	close_program = 0;
 	int test;
 
@@ -469,6 +460,7 @@ int main(int argc, char *argv[])
 		uSleep(1,0);
 	}
 	pthread_kill(plisten_thread,NULL);
+//	pthread_kill(queue_thread, NULL);
 	pthread_kill(cmd_task_thread,NULL);
 	pthread_kill(pbasic_controls_task_thread,NULL);
 	pthread_kill(test_thread,NULL);
@@ -518,6 +510,7 @@ int get_msg(void)
 	{
 		printf("bad preamble\n");
 //		uSleep(2,0);
+		exit(1);
 		return -1;
 	}
 	ret = recv_tcp(&low,1,1);
