@@ -25,6 +25,7 @@ void *send_thread(void *);
 void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 void *timer_thread(void *);
+void *check_time_thread(void *);
 //void *tester_thread(void *);
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
@@ -52,6 +53,7 @@ int main(int argc , char *argv[])
 	pthread_t sock_thread;
 	pthread_t time_thread;
 	pthread_t test_thread;
+	pthread_t c_time_thread;
 	//Create socket
 	no_threads = 0;
 	basic_controls_key = BASIC_CONTROLS_KEY;
@@ -76,6 +78,7 @@ int main(int argc , char *argv[])
 	for(i = 0;i < MAX_THREADS;i++)
 	{
 		pthreads_list[i].sock = -1;
+		pthreads_list[i].time_stamp = 0;
 //		memset(pthreads_list[i].client_name,0,30);
 	}
 
@@ -102,6 +105,11 @@ int main(int argc , char *argv[])
 	}
 */
  	if( pthread_create( &time_thread , NULL ,  timer_thread , (void*) pret) < 0)
+	{
+		perror("could not create thread");
+//		return 1;
+	}
+ 	if( pthread_create( &c_time_thread , NULL ,  check_time_thread , (void*) pret) < 0)
 	{
 		perror("could not create thread");
 //		return 1;
@@ -134,6 +142,7 @@ int main(int argc , char *argv[])
 	pthread_kill(sock_thread, 0);
 //	pthread_kill(test_thread, 0);
 	pthread_kill(time_thread, 0);
+	pthread_kill(c_time_thread, 0);
 	printf("done\n");
 	return 0;
 }
@@ -166,6 +175,7 @@ void *new_sock_thread(void *ret)
 	if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
 	{
 		puts("bind failed");
+		exit(1);
 	}
 	puts("bind done");
 	
@@ -265,6 +275,7 @@ void *listen_thread(void *socket_desc)
 	struct msgqbuf msg;
 	UCHAR tempx[100];
 	UCHAR tempx2[100];
+	UCHAR tempx3[10];
 	int msg_len;
 	int ret;
 	UCHAR cmd;
@@ -275,6 +286,9 @@ void *listen_thread(void *socket_desc)
 	msg.mtype = msgtype;
 	int index = -1;
 	int win_cl_index = -1;
+	struct tm t;
+	struct tm tm;
+	time_t now;
 
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
@@ -301,16 +315,16 @@ void *listen_thread(void *socket_desc)
 		}
 */
 		memset(tempx,0,sizeof(tempx));
-		printf("start get_msg\n");
+//		printf("start get_msg\n");
 		
 		if(pthreads_list[index].win_cl == 1)
 		{
 //			printf("win cl\n");
 			msg_len = get_msgb(sock);
 			
-			printf("msg_len: %d\n",msg_len);
+//			printf("msg_len: %d\n",msg_len);
 			ret = recv_tcp(sock, &tempx[0],msg_len,1);
-			printf("ret: %d\n",ret);
+//			printf("ret: %d\n",ret);
 			if(win_cl_index < 0)
 			{
 				win_cl_index = index;
@@ -320,16 +334,16 @@ void *listen_thread(void *socket_desc)
 		else
 		{
 			msg_len = get_msg(sock);
-			printf("msg_len: %d\n",msg_len);
+//			printf("msg_len: %d\n",msg_len);
 			if(msg_len >= 0)
 				ret = recv_tcp(sock, &tempx[0],msg_len+2,1);
 			else uSleep(5,0);
-			printf("ret: %d\n",ret);
+//			printf("ret: %d\n",ret);
 		}
 
-		for(i = 0;i < msg_len;i++)
-			printf("%02x ",tempx[i]);
-		printf("\n");
+//		for(i = 0;i < msg_len;i++)
+//			printf("%02x ",tempx[i]);
+//		printf("\n");
 
 		cmd = tempx[0];
 //		print_cmd(cmd);
@@ -354,14 +368,14 @@ void *listen_thread(void *socket_desc)
 			msg_len /= 2;
 			msg_len -= 3;
 			memmove(tempx,tempx2,msg_len);
-			printf("win_cl tempx: %s\n",tempx);
+//			printf("win_cl tempx: %s\n",tempx);
 		}else
 		{
 			dest = tempx[1];
 			memmove(tempx,tempx+2,msg_len);
 			tempx[msg_len] = 0;
 		}
-		printf("cmd: %d dest: %d\n",cmd,dest);
+//		printf("cmd: %d dest: %d\n",cmd,dest);
 
 		if(cmd == SET_CLIENT_NAME)
 		{
@@ -387,12 +401,23 @@ void *listen_thread(void *socket_desc)
 			}
 		}else if(cmd == UPDATE_STATUS)
 		{
-			printf("staus: %s\n",tempx);
+//			printf("staus: %s\n",tempx);
+/*
+			gettimeofday(&mtv, NULL);
+			curtime2 = mtv.tv_sec;
+*/
+			now = time(NULL);
+			tm = *localtime(&now);
+			memset(tempx2,0,sizeof(tempx));
+			sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+			printf("%s\n",tempx2);
+
 			for(i = 0;i < MAX_THREADS;i++)
 			{
 				if(strcmp(pthreads_list[i].client_name,tempx) == 0)
 				{
-					printf("%s\n",pthreads_list[i].ipadd);
+//					printf("%s\n", pthreads_list[i].time_stamp);
+					pthreads_list[i].time_stamp = now;
 				}
 			}
 		}else
@@ -403,9 +428,9 @@ void *listen_thread(void *socket_desc)
 				i++;
 
 			printf("sock: %d index %d\n",pthreads_list[i].sock,pthreads_list[i].index);
-			printf("%s\n",tempx);
+//			printf("%s\n",tempx);
 
-			if(pthreads_list[index].sock > 0 && index > 0)
+			if(i < no_threads && pthreads_list[index].sock > 0 && index > 0)
 				send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
 //			pthreads_list[i].sock = -1;
 //			pthread_kill(pthreads_list[i].listen_thread,0);
@@ -494,39 +519,72 @@ void *read_queue_thread(void *socket_desc)
 
 void *timer_thread(void *ret)
 {
-	char buff[30];
-	char buff2[30];
+	char buff[40];
 	int n;
 	int val;
 	int cmd = SEND_STATUS;
 	int i;
 	int j;
 
-	strcpy(buff,"timer\0");
+	strcpy(buff,"timer \0");
 
-	uSleep(10,0);
+	uSleep(20,0);
 	j = 0;
 	printf("timer thread started\n");
 	for(;;)
 	{
-		memset(buff2,0,sizeof(buff2));
-		uSleep(5,0);
+		uSleep(30,0);
 		for(i = 0;i < no_threads;i++)
 		{
 			if(pthreads_list[i].sock > 0)
 			{
-//				printf("sock: %d\n", pthreads_list[i].sock);
+				printf("%s %d\n",pthreads_list[i].ipadd, pthreads_list[i].sock);
 				val = i;
 //				sprintf(buff2, "%s %d %d",buff, val,j);
 //				printf("%s\n",buff2);
-				n = strlen(buff2);
-				send_msg(pthreads_list[i].sock, n, buff2, cmd);
+				n = strlen(buff);
+				if(pthreads_list[i].win_cl == 1)
+					send_msgb(pthreads_list[i].sock, n*2, buff, cmd);
+				else
+					send_msg(pthreads_list[i].sock, n, buff, cmd);
 				j++;
-				uSleep(5,0);
+				uSleep(15,0);
 			}
-			uSleep(4,0);
+			uSleep(30,0);
 		}
 
+	}
+}
+
+void *check_time_thread(void *ret)
+{
+	struct tm tm;
+	time_t now, then;
+	char tempx[20];
+	double time_diff;
+	int i;
+
+	uSleep(60,0);
+	i = 0;
+	printf("start check time thread\n");
+	for(;;)
+	{
+		uSleep(10,0);
+		then = pthreads_list[i].time_stamp;
+		printf("checking %s\n",pthreads_list[i].ipadd);
+		if(++i >= no_threads)
+			i = 0;
+		if(then != 0)
+		{
+			now = time(NULL);
+			time_diff = difftime(now,then);
+			printf("diff: %.0f\n",time_diff);
+			tm = *localtime(&now);
+			memset(tempx,0,sizeof(tempx));
+			sprintf(tempx,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+			printf("%s\n",tempx);
+			uSleep(60,0);
+		}else memset(tempx,0,sizeof(tempx));
 	}
 }
 

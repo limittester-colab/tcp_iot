@@ -87,7 +87,8 @@ void *send_queue_thread(void *buff)
 /****************************************************************************************/
 void *listen_thread(void *socket_desc)
 {
-	char tempx[200];
+	char tempx[50];
+	char tempx2[50];
 	int msg_len;
 	int ret;
 	UCHAR cmd;
@@ -95,6 +96,8 @@ void *listen_thread(void *socket_desc)
 	struct msgqbuf msg;
 	msg.mtype = 1;
 	UCHAR dest;
+	struct tm tm;
+	time_t now, then;
 
 	//Get the socket descriptor
 	int read_size;
@@ -109,7 +112,7 @@ void *listen_thread(void *socket_desc)
 //		printf("sock: %d\n",global_socket);
 		msg_len = get_msg();
 		ret = recv_tcp(&tempx[0],msg_len+1,1);
-		printf("ret: %d msg_len: %d\n",ret,msg_len);
+//		printf("ret: %d msg_len: %d\n",ret,msg_len);
 		cmd = tempx[0];
 		if(cmd == DISCONNECT)
 		{
@@ -126,12 +129,21 @@ void *listen_thread(void *socket_desc)
 			return;
 		}else if(cmd == SEND_STATUS)
 		{
-			strcpy(tempx,client_name);
+			now = time(NULL);
+			tm = *localtime(&now);
+			memset(tempx,0,sizeof(tempx));
+			sprintf(tempx,"%02d:%02d:%02d: ", tm.tm_hour, tm.tm_min, tm.tm_sec);
 			printf("%s\n",tempx);
+			memset(tempx2,0,sizeof(tempx2));
+			strcpy(tempx2,client_name);
+//			printf("%s\n",tempx);
+//			strcat(tempx, tempx2);
 			msg_len = strlen(tempx);
 			cmd = UPDATE_STATUS;
 			dest = 5;	// to server
-			send_msg(msg_len, tempx, cmd, dest);
+			send_msg(msg_len, tempx2, cmd, dest);
+//			printf("diff: %.0f\n",difftime(now, then));
+			then = now;
 		}else 
 		{
 			memmove(tempx,tempx+1,msg_len);

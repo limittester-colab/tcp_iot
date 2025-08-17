@@ -25,7 +25,7 @@ typedef struct
 	int win_cl;
 	char ipadd[4];
 	int index;
-//	int client_avail;
+	time_t time_stamp;
 }THREADS;
 
 struct msgqbuf
