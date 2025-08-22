@@ -535,30 +535,6 @@ UCHAR get_host_cmd_task(int *test)
 						mask <<= 1;
 					}
 					break;
-
-				case SET_NEXT_CLIENT:
-					next_client = tempx[0];
-					if(next_client == 8)
-					{
-						next_client = 0;
-						printf("stop\n");
-					}else printf("next client: %s\n", client_table[next_client].label);
-					j = 0;
-					break;
-
-				case SEND_NEXT_CLIENT:
-					cmd = 0x21;
-					for(i = 0;i < SERIAL_BUFF_SIZE;i++)
-					{
-						tempx[i] = cmd;
-						if(++cmd > 0x7e)
-							cmd = 0x21;
-					}
-					uSleep(0,TIME_DELAY/10);
-					j++;
-					if(j > 10)
-						j = 0;
-					break;
 #endif
 #if 1
 
@@ -736,10 +712,6 @@ UCHAR get_host_cmd_task(int *test)
 //					send_sock_msg(tempx, msg_len, cmd, _158);
 					break;
 
-				case BAD_MSG:
-//						close_program = 1;
-					break;
-
 				case DISCONNECT:
 /*
 					if(test_sock() > 0)
@@ -747,16 +719,6 @@ UCHAR get_host_cmd_task(int *test)
 						close_tcp();
 						printf("disconnected\0");
 					}
-*/
-					break;
-
-				case GET_CONFIG2:
-/*
-					printf("ds_interval: %d\n",ps.ds_interval);
-					printf("valid: \n");
-					for(i = 0;i < 7;i++)
-						printf("%d ",ps.valid_ds[i]);
-					printf("\nenabled: %d\n",ps.ds_enable);
 */
 					break;
 #endif

@@ -128,6 +128,7 @@ void *listen_thread(void *socket_desc)
 			pthread_kill(cmd_task_thread,NULL);
 			pthread_kill(pbasic_controls_task_thread,NULL);
 			pthread_kill(test_thread,NULL);
+			shutdown(global_socket, SHUT_RDWR);	// this is supposed to clear the buffer but apperently not 
 			close(global_socket);
 			close_program = 1;
 			return;

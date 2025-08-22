@@ -422,7 +422,7 @@ void *listen_thread(void *socket_desc)
 					printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
 					close(pthreads_list[i].sock);
 					pthreads_list[i].sock = -1;
-					uSleep(1,0);
+					uSleep(0,TIME_DELAY/2);
 				}
 				i++;
 			}
