@@ -47,7 +47,7 @@ struct msgqbuf
 #define BASIC_CONTROLS_KEY		1400
 #define PROTOPORT				5193				  /* default protocol port number */
 #define QLEN					6					  /* size of request queue        */
-#define MAX_THREADS				6
+#define MAX_THREADS				7
 int uSleep(time_t sec, long nanosec);
 
 #define _1SEC	 	1000000 

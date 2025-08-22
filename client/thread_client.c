@@ -109,13 +109,17 @@ void *listen_thread(void *socket_desc)
 
 	for(;;)
 	{
-//		printf("sock: %d\n",global_socket);
+		printf("sock: %d\n",global_socket);
 		msg_len = get_msg();
+		if(msg_len < 0)
+		{
+			return 0;
+		}
 		ret = recv_tcp(&tempx[0],msg_len+1,1);
-//		printf("ret: %d msg_len: %d\n",ret,msg_len);
+		printf("ret: %d msg_len: %d\n",ret,msg_len);
 		cmd = tempx[0];
 		if(cmd == DISCONNECT)
-		{
+		{									// DISCONNECT
 			printf("closing program\n");
 			memset(tempx,0,sizeof(tempx));
 //			send_msg(0, tempx,cmd, 0);
@@ -128,12 +132,14 @@ void *listen_thread(void *socket_desc)
 			close_program = 1;
 			return;
 		}else if(cmd == SEND_STATUS)
-		{
+		{									// SEND_STATUS
 			now = time(NULL);
+/*
 			tm = *localtime(&now);
 			memset(tempx,0,sizeof(tempx));
 			sprintf(tempx,"%02d:%02d:%02d: ", tm.tm_hour, tm.tm_min, tm.tm_sec);
 			printf("%s\n",tempx);
+*/
 			memset(tempx2,0,sizeof(tempx2));
 			strcpy(tempx2,client_name);
 //			printf("%s\n",tempx);
@@ -145,20 +151,23 @@ void *listen_thread(void *socket_desc)
 //			printf("diff: %.0f\n",difftime(now, then));
 			then = now;
 		}else 
-		{
+		{									// EVERYTHING ELSE
 			memmove(tempx,tempx+1,msg_len);
 			memset(msg.mtext,0,sizeof(msg.mtext));
 			msg.mtext[0] = cmd;
 			msg.mtext[1] = (UCHAR)msg_len;
 			msg.mtext[2] = (UCHAR)(msg_len >> 4);
 			memcpy(msg.mtext + 3,tempx,msg_len);
-				for(i = 0;i < msg_len + 3;i++)
-					printf("%02x ",msg.mtext[i]);
-				printf("\n");
+
+			for(i = 0;i < msg_len + 3;i++)
+				printf("%02x ",msg.mtext[i]);
+			printf("\n");
+
 			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)
 			{
 				perror("msgsnd error");
+				printf("msgsnd error");
 			}
 		}
 	}
@@ -167,11 +176,6 @@ void *listen_thread(void *socket_desc)
 	{
 		puts("Client disconnected");
 	}
-	else if(msg_len == -1)
-	{
-		perror("recv failed");
-	}
-		
 	return 0;
 }
 void *tester_thread(void *socket_desc)
@@ -372,6 +376,7 @@ int main(int argc, char *argv[])
 	int n = 0;
 	close_program = 0;
 	int test;
+	int opt;
 
 	if(argc != 2)
 	{
@@ -416,6 +421,13 @@ int main(int argc, char *argv[])
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr("192.168.88.239");
     servaddr.sin_port = htons(PORT);
+
+	if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0)
+	{
+		perror("setsockopt");
+		printf("setsockopt\n");
+		exit(EXIT_FAILURE);
+	}
 
     // connect the client socket to server socket
     if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr))
@@ -471,12 +483,14 @@ int main(int argc, char *argv[])
 	{
 		uSleep(1,0);
 	}
+/*
 	pthread_kill(plisten_thread,NULL);
 //	pthread_kill(queue_thread, NULL);
 	pthread_kill(cmd_task_thread,NULL);
 	pthread_kill(pbasic_controls_task_thread,NULL);
 	pthread_kill(test_thread,NULL);
 	close(global_socket);
+*/
 	return 0;
 	
 /*
@@ -624,8 +638,7 @@ int put_sock(UCHAR *buf,int buflen, int block, char *errmsg)
 			sprintf(extra_msg," %d",errno);
 			strcat(errmsg,extra_msg);
 			strcat(errmsg," put_sock");
-//			close_tcp();
-			//printf("closing tcp socket\n");
+			printf("put_sock: %s\n",errmsg);
 		}else strcpy(errmsg,"Success\0");
 	}
 	else
@@ -652,6 +665,7 @@ int get_sock(UCHAR *buf, int buflen, int block, char *errmsg)
 		sprintf(extra_msg," %d",errno);
 		strcat(errmsg,extra_msg);
 		strcat(errmsg," get_sock");
+		printf("get_sock: %s\n",errmsg);
 	}else strcpy(errmsg,"Success\0");
 	return rc;
 }

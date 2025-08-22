@@ -21,7 +21,7 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <dirent.h> 
-
+#include <time.h>
 #include "cmd_types.h"
 #include "mytypes.h"
 #include "ioports.h"
@@ -64,14 +64,6 @@ inline int pack4chars(char c1, char c2, char c3, char c4) {
 }
 #endif
 
-/*
-char *lookup_raw_data(int val)
-{
-	int i = 0;
-	while(raw_data[i].raw != val && i++ < 360);
-	return raw_data[i].str;
-}
-*/
 void print_cmd(UCHAR cmd)
 {
 	if(cmd >= NO_CMDS)
@@ -313,46 +305,8 @@ UCHAR get_host_cmd_task(int *test)
 			printf("%s\r\n",errmsg);
 		}
 	}
-//	printf("loaded config\n");
-/*
-	cllist_init(&cll);
-	if(access(cFileName,F_OK) != -1)
-	{
-		clLoadConfig(cFileName,&cll,csize,errmsg);
-		if(rc > 0)
-		{cd 
-			printf("%s\r\n",errmsg);
-		}
-		cs_index = cllist_get_size(&cll);
-		//printf("%d no recs in cllist\n",cs_index);
-		//cllist_show(&cll);
-	}else printf("can't find %s\n",cFileName);
-*/
-//	dllist_init(&dll);
-	//strcpy(dFileName,"temp.dat\0");
-/*	
-	if(access(dFileName,F_OK) != -1)
-	{
-		dlLoadConfig(dFileName,&dll,dsize,errmsg);
-		if(rc > 0)
-		{
-			printf("%s\r\n",errmsg);
-		}
-		//dllist_show(&dll);
-	}else
-	{
-		memset(dtp,0,sizeof(D_DATA));
-		printf("can't open %s\n",dFileName);
-		dlWriteConfig(dFileName, &dll,1,errmsg);
-	}
-	ds_index = dllist_get_size(&dll);
-	dlAppendConfig("tempdat.dat","tempdata.dat", &dll, 1, errmsg);
-
-	ds_index = 0;
-*/
 	msg.mtype = msgtype;
 
-//	printf("main_qid: %d\n",main_qid);
 	while(TRUE)
 	{
 		cmd = 0;
@@ -366,7 +320,7 @@ UCHAR get_host_cmd_task(int *test)
 		// msg from sock 
 //		printf("\n..\n");
 		msg.mtype = msgtype;
-//		printf("start msgrcv\n");
+		printf("start msgrcv\n");
 		if (msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR) == -1) 
 		{
 			if (errno != ENOMSG) 
@@ -650,8 +604,10 @@ UCHAR get_host_cmd_task(int *test)
 					break;
 
 				case SET_TIME:	// could this be easier with strtok() ?
-					//printf("set time\n");
+#ifndef SERVER_146
+//					printf("set time\n");
 					curtime2 = 0L;
+					printf("%s\n",tempx);
 					j = 0;
 
 //						for(i = 2;i < msg_len;i+=2)
@@ -671,32 +627,32 @@ UCHAR get_host_cmd_task(int *test)
 					while(*(pch++) != '/' && i < msg_len)
 					{
 						i++;
-//							printf("%c",*pch);
+//						printf("%c",*pch);
 					}
 					memcpy(&temp_time[0],&tempx[0],i);
 					i = atoi(temp_time);
-//						printf("\nmon: %d\n",i - 1);
+//					printf("\nmon: %d\n",i - 1);
 					pt->tm_mon = i - 1;
 					i = 0;
 
 					while(*(pch++) != '/' && i < msg_len)
 					{
 						i++;
-//							printf("%c",*pch);
+//						printf("%c",*pch);
 					}
 					memset(temp_time,0,sizeof(temp_time));
 					memcpy(temp_time,pch-i-1,i);
-//						printf("%s\n",temp_time);
+//					printf("%s\n",temp_time);
 					i = atoi(temp_time);
 					pt->tm_mday = i;
-//						printf("day: %d\r\n",i);
+//					printf("day: %d\r\n",i);
 			//		return 0;
 
 					i = 0;
 					while(*(pch++) != ' ' && i < msg_len)
 					{
 						i++;
-//							printf("%c\r\n",*pch);
+//						printf("%c\r\n",*pch);
 					}
 
 					memset(temp_time,0,sizeof(temp_time));
@@ -704,7 +660,7 @@ UCHAR get_host_cmd_task(int *test)
 					i = atoi(temp_time);
 					i += 100;
 					pt->tm_year = i;
-//						printf("year: %d\r\n",i-100);
+//					printf("year: %d\r\n",i-100);
 			//		return 0;
 					i = 0;
 
@@ -712,10 +668,10 @@ UCHAR get_host_cmd_task(int *test)
 						i++;
 					memset(temp_time,0,sizeof(temp_time));
 					memcpy(temp_time,pch-i-1,i);
-//						printf("%s \n",temp_time);
+//					printf("%s \n",temp_time);
 					i = atoi(temp_time);
 					pt->tm_hour = i;
-//						printf("hour: %d\r\n",i);
+//					printf("hour: %d\r\n",i);
 			//		return 0;
 
 					i = 0;
@@ -723,37 +679,39 @@ UCHAR get_host_cmd_task(int *test)
 						i++;
 					memset(temp_time,0,sizeof(temp_time));
 					memcpy(temp_time,pch-3,2);
-//						printf("%s \n",temp_time);
+//					printf("%s \n",temp_time);
 					i = atoi(temp_time);
 					pt->tm_min = i;
-//						printf("min: %d\r\n",i);
+//					printf("min: %d\r\n",i);
 
 					i = 0;
 					while(*(pch++) != ' ' && i < msg_len)
 						i++;
 					memset(temp_time,0,sizeof(temp_time));
 					memcpy(temp_time,pch-3,2);
-//						printf("%s \n",temp_time);
+//					printf("%s \n",temp_time);
 					i = atoi(temp_time);
 					pt->tm_sec = i;
-//						printf("sec: %d\r\n",i);
-//						printf("%c %x\n",*pch,*pch);
+//					printf("sec: %d\r\n",i);
+//					printf("%c %x\n",*pch,*pch);
 					if(*pch == 'P')
 					{
-						//printf("PM\n");
+//						printf("PM\n");
 						if(pt->tm_hour != 12)
 							pt->tm_hour += 12;
 					}else if(*pch == 'A' && pt->tm_hour == 12)
 						pt->tm_hour -= 12;
-					//printf("hour: %d\n",pt->tm_hour);
+//					printf("hour: %d\n",pt->tm_hour);
 
 					curtime2 = mktime(pt);
-//					stime(pcurtime2);
+// the following won't compile on Rpi (stime)
+					stime(pcurtime2);
 					uSleep(0,TIME_DELAY/3);
 					gettimeofday(&mtv, NULL);
 					curtime2 = mtv.tv_sec;
 					strftime(tempx,30,"%m-%d-%Y %T\0",localtime(&curtime2));
-					//printf("%s\n",tempx);
+					printf("%s\n",tempx);
+#endif
 					break;
 
 				case GET_TIME:
@@ -770,8 +728,8 @@ UCHAR get_host_cmd_task(int *test)
 					T = time(NULL);
 					tm = *localtime(&T);
 					memset(tempx,0,sizeof(tempx));
-					sprintf(tempx,"%02d:%02d:%02dxxx", tm.tm_hour, tm.tm_min, tm.tm_sec);
-					//printf("%s\n",tempx);
+					sprintf(tempx,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+					printf("%s\n",tempx);
 					msg_len = strlen(tempx);
 					//printf("msg_len: %d\n",msg_len);
 					cmd = SEND_MESSAGE;
@@ -809,57 +767,4 @@ UCHAR get_host_cmd_task(int *test)
 		}									  // if rc > 0
 	}
 	return test + 1;
-}
-
-
-UCHAR get_host_cmd_task2(int *test)
-{
-	struct msgqbuf msg;		// this has to be shared by send_sock_msg & get_host_cmd_task
-	int msgtype = 1;
-	UCHAR cmd;
-	int msg_len;
-	UCHAR tempx[30];
-	int ret;
-	printf("starting cmd host\n");
-
-	msg.mtype = msgtype;
-
-//	while(TRUE)
-	for(;;)
-	{
-		cmd = 0;
-		if(close_program == 1)
-		{
-			printf("shutting down cmd host\n");
-			//free(stp);
-			return 0;
-		}
-//		uSleep(0,TIME_DELAY/10);abort
-		// msg from sock 
-		printf("..\n");
-		memset(msg.mtext,0,sizeof(msg.mtext));
-		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
-		printf("ret: %ld errno: %d\n",ret,errno);
-		if(ret == -1)
-		{
-			if(errno != ENOMSG)
-			{
-				perror("msgrcv");
-				printf("msgrcv error\n");
-				exit(EXIT_FAILURE);
-			}
-		}
-		printf("errno: %d\n",errno);
-		cmd = msg.mtext[0];
-		print_cmd(cmd);
-		printf("sched cmd host: ");
-
-		msg_len = (int)msg.mtext[1];
-		msg_len |= (int)(msg.mtext[2] << 4);
-
-		printf("msg_len: %d\n",msg_len);
-		memset(tempx,0,sizeof(tempx));
-		memcpy(tempx,&msg.mtext[3],msg_len);
-		tempx[msg_len + 1] = 0;
-	}
 }
