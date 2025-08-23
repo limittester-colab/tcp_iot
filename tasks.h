@@ -24,7 +24,7 @@ typedef struct
 	char client_name[30];
 	int win_cl;
 	char ipadd[4];
-	int index;
+	int dest;
 	time_t time_stamp;
 }THREADS;
 

@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 	memset(str,0,sizeof(str));
 	strcpy(str,argv[2]);
 	msg_len = strlen(str);
-	printf("len: %d string: %s\n", msg_len, str);
+//	printf("len: %d string: %s\n", msg_len, str);
 	msg.mtype = msgtype;
 	memset(msg.mtext,0,sizeof(msg.mtext));
 	msg.mtext[0] = cmd;
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 	memcpy(&msg.mtext[3],str,msg_len);
 
 //	printf("str_len: %d\n",strlen(str));
-
+/*
 	for(i = 0;i < msg_len;i++)
 		printf("%c",msg.mtext[i+3]);
 	printf("\n");
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 	for(i = 0;i < msg_len+5;i++)
 		printf("%02x ",msg.mtext[i]);
 	printf("\n");
-
+*/
 	if (msgsnd(sock_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR) == -1) 
 	{
 		printf("queue failed\n");

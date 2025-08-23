@@ -130,9 +130,8 @@ void *listen_thread(void *socket_desc)
 			pthread_kill(plisten_thread,NULL);
 			pthread_kill(cmd_task_thread,NULL);
 			pthread_kill(pbasic_controls_task_thread,NULL);
-			pthread_kill(test_thread,NULL);
+//			pthread_kill(test_thread,NULL);
 			shutdown(global_socket, SHUT_RDWR);	// this is supposed to clear the buffer but apperently not 
-			close(global_socket);
 			close_program = 1;
 			return;
 		}else if(cmd == SEND_STATUS)
@@ -201,109 +200,67 @@ void *tester_thread(void *socket_desc)
 			case 'a':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_LIGHT;
-				dest = 2;
+				cmd = CABIN_SOUTH;
+				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'b':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_LIGHT;
-				dest = 2;
+				cmd = CABIN_SOUTH;
+				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'c':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_HEATER;
-				dest = 2;
+				cmd = CABIN_KITCHEN;
+				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'd':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_HEATER;
-				dest = 2;
+				cmd = CABIN_KITCHEN;
+				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'e':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = BENCH_12V_1;
-				dest = 2;
+				cmd = CABIN_EAST;
+				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'f':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = BENCH_12V_1;
-				dest = 2;
+				cmd = CABIN_EAST;
+				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'g':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CABIN_SOUTH;
+				cmd = CABIN_DOOR;
 				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'h':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = CABIN_SOUTH;
+				cmd = CABIN_DOOR;
 				dest = 1;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'i':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CABIN_KITCHEN;
-				dest = 1;
-				send_msg(msg_len, buff, cmd, dest);
-			break;
-			case 'j':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_KITCHEN;
-				dest = 1;
-				send_msg(msg_len, buff, cmd, dest);
-			break;
-			case 'k':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_EAST;
-				dest = 1;
-				send_msg(msg_len, buff, cmd, dest);
-			break;
-			case 'l':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_EAST;
-				dest = 1;
-				send_msg(msg_len, buff, cmd, dest);
-			break;
-			case 'm':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_DOOR;
-				dest = 1;
-				send_msg(msg_len, buff, cmd, dest);
-			break;
-			case 'n':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_DOOR;
-				dest = 1;
-				send_msg(msg_len, buff, cmd, dest);
-			break;
-			case 'o':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
 				cmd = BENCH_LIGHT1;
 				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
-			case 'p':
+			case 'j':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
 				cmd = BENCH_LIGHT1;
@@ -311,6 +268,7 @@ void *tester_thread(void *socket_desc)
 				send_msg(msg_len, buff, cmd, dest);
 			break;
 			case 'q':
+				printf("quit goes here\n");
 /*
 				strcpy(buff,"closing client program\0");
 				msg_len = strlen(buff);
@@ -323,46 +281,6 @@ void *tester_thread(void *socket_desc)
 				send_msg(msg_len, buff, cmd, dest);
 */
 			break;
-			case 'r':
-				dest = 4;
-				cmd = COOP1_LIGHT;
-				
-				for(i = 0;i < 16;i++)
-				{
-					strcpy(buff,"ON\0");
-					msg_len = strlen(buff);
-					send_msg(msg_len, buff, cmd, dest);
-					uSleep(1,0);
-					strcpy(buff,"OFF\0");
-					msg_len = strlen(buff);
-					send_msg(msg_len, buff, cmd, dest);
-					uSleep(1,0);
-					cmd++;
-				}
-			break;
-			case 's':
-				dest = 2;
-				uSleep(5,0);
-				for(j = 0;j < 3;j++)
-				{
-					cmd = CHICK_LIGHT;
-					for(i = 0;i < 16;i++)	// there's 4 of these that aren't wired
-					{
-						strcpy(buff,"ON\0");
-						msg_len = strlen(buff);
-						send_msg(msg_len, buff, cmd, dest);
-//						uSleep(0,TIME_DELAY/2);
-						uSleep(1,0);
-						strcpy(buff,"OFF\0");
-						msg_len = strlen(buff);
-						send_msg(msg_len, buff, cmd, dest);
-//						uSleep(0,TIME_DELAY/2);
-						uSleep(1,0);
-						cmd++;
-					}
-				}
-			break;
-
 		}
 //		printf("%s\n",buff);
 
@@ -471,13 +389,13 @@ int main(int argc, char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
-
+/*
 	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) test) < 0)
 	{
 		perror("could not create thread");
 		return 1;
 	}
-
+*/
 	// send the client name to the server 
 	send_msg(30, client_name, SET_CLIENT_NAME, 0);
 	//void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)
@@ -486,6 +404,7 @@ int main(int argc, char *argv[])
 	{
 		uSleep(1,0);
 	}
+	close(global_socket);
 /*
 	pthread_kill(plisten_thread,NULL);
 //	pthread_kill(queue_thread, NULL);

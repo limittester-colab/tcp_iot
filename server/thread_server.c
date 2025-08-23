@@ -26,7 +26,7 @@ void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 void *timer_thread(void *);
 void *check_time_thread(void *);
-//void *tester_thread(void *);
+void *tester_thread(void *);
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
 int highest_sock;
@@ -42,6 +42,13 @@ THREADS pthreads_list[MAX_THREADS];
 {
 	printf("client name: %s\n",client_name);
 } */
+int get_dest(int dest)
+{
+	int i = 0;
+	while(dest != pthreads_list[i].dest && i < MAX_THREADS && pthreads_list[i].sock <= highest_sock)
+		i++;
+	return i;
+}
 #endif
 /****************************************************************************************************/
 int main(int argc , char *argv[])
@@ -68,6 +75,7 @@ int main(int argc , char *argv[])
 
 	for(i = 0;i < MAX_THREADS;i++)
 	{
+		pthreads_list[i].dest = -1;
 		pthreads_list[i].sock = -1;
 		pthreads_list[i].time_stamp = 0;
 //		memset(pthreads_list[i].client_name,0,30);
@@ -78,12 +86,13 @@ int main(int argc , char *argv[])
 		perror("could not create thread");
 //		return 1;
 	}
-/*
-	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) socket_desc) < 0)
+
+	if( pthread_create( &test_thread , NULL ,  tester_thread , (void*) pret) < 0)
 	{
 		perror("could not create thread");
 		return 1;
 	}
+/*
 	if( pthread_create( &cmd_task_thread , NULL ,  get_host_cmd_task , (void*) test) < 0)
 	{
 		perror("could not create thread");
@@ -126,7 +135,7 @@ int main(int argc , char *argv[])
 //		pthread_kill(pthreads_list[i].read_queue_thread,0);
 	}
 	pthread_kill(sock_thread, 0);
-//	pthread_kill(test_thread, 0);
+	pthread_kill(test_thread, 0);
 //	pthread_kill(time_thread, 0);
 //	pthread_kill(c_time_thread, 0);
 	printf("done\n");
@@ -224,30 +233,30 @@ void *new_sock_thread(void *ret)
 		strncpy(pthreads_list[no_threads].ipadd,tempx,3);
 		if(strncmp(tempx,"158",3) == 0)
 		{
-			pthreads_list[no_threads].index = 0;
+			pthreads_list[no_threads].dest = 0;
 		}
 		if(strncmp(tempx,"154",3) == 0)
 		{
-			pthreads_list[no_threads].index = 1;
+			pthreads_list[no_threads].dest = 1;
 		}
 		if(strncmp(tempx,"147",3) == 0)
 		{
-			pthreads_list[no_threads].index = 2;
+			pthreads_list[no_threads].dest = 2;
 		}
 		if(strncmp(tempx,"146",3) == 0)
 		{
-			pthreads_list[no_threads].index = 3;
+			pthreads_list[no_threads].dest = 3;
 		}
 		if(strncmp(tempx,"151",3) == 0)
 		{
-			pthreads_list[no_threads].index = 4;
+			pthreads_list[no_threads].dest = 4;
 		}
 		if(strncmp(tempx,"237",3) == 0)
 		{
-			pthreads_list[no_threads].index = 5;
+			pthreads_list[no_threads].dest = 5;
 		}
 
-		printf("start: %d %s %d\n",pthreads_list[no_threads].index, pthreads_list[no_threads].ipadd, pthreads_list[no_threads].sock);
+		printf("start: %d %s %d\n",pthreads_list[no_threads].dest, pthreads_list[no_threads].ipadd, pthreads_list[no_threads].sock);
 		printf("no_threads: %d\n",no_threads);
 //		printf("sock: %d\n",new_socket);
 		no_threads++;
@@ -302,7 +311,6 @@ void *listen_thread(void *socket_desc)
 		{
 			if(sock == pthreads_list[i].sock)
 				index = i;
-		
 		}
 		memset(tempx,0,sizeof(tempx));
 //		printf("start get_msg\n");
@@ -340,7 +348,6 @@ void *listen_thread(void *socket_desc)
 		cmd = tempx[0];
 		if(cmd < NO_CMDS)
 		{
-
 	/*
 			for(i = 0;i < msg_len;i++)
 				printf("%02x ",tempx[i]);
@@ -350,7 +357,6 @@ void *listen_thread(void *socket_desc)
 				printf("%02x ",tempx[i]);
 			printf("\n");
 	*/
-
 			if(pthreads_list[index].win_cl == 1)
 			{
 				dest = tempx[2];
@@ -384,7 +390,7 @@ void *listen_thread(void *socket_desc)
 	//				printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
 					if(pthreads_list[i].sock > 0 && pthreads_list[i].win_cl == 0)
 					{
-						sprintf(tempx,"%d %s %d", pthreads_list[i].index, pthreads_list[i].ipadd, pthreads_list[i].sock);
+						sprintf(tempx,"%d %s %d", pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
 						printf("%s\n",tempx);
 	//					printf("%d\n",pthreads_list[win_cl_index].sock);
 						msg_len = strlen(tempx);
@@ -419,28 +425,43 @@ void *listen_thread(void *socket_desc)
 				printf("IOT: %s\n",tempx);
 				if(win_cl_index > 0)
 					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
-			}else if(cmd == DISCONNECT)
-			{								// DISCONNECT
+			}else if(cmd == DISCONNECT_ALL)
+			{								// DISCONNECT_ALL
 				i = 0;
+				cmd = DISCONNECT;
 				while(i < no_threads)
 				{
 					if(pthreads_list[i].sock > 0) //  && pthreads_list[i].win_cl == 0)
 					{
 						send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
 						printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
+						uSleep(0,TIME_DELAY/2);
 						close(pthreads_list[i].sock);
 						pthreads_list[i].sock = -1;
-						uSleep(0,TIME_DELAY/2);
+						pthreads_list[i].dest = -1;
+						memset(pthreads_list[i].client_name, 0, sizeof(client_name));
+						no_threads--;
 					}
 					i++;
 				}
+			}else if(cmd == DISCONNECT)
+			{
+				i = get_dest(dest);
+				if(i < no_threads && index > 0 && pthreads_list[i].sock > 0)
+				{
+					printf("send_disconnect msg: %d\n",pthreads_list[i].sock);
+					send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
+					close(pthreads_list[i].sock);
+					pthreads_list[i].sock = -1;
+					pthreads_list[i].dest = -1;
+					memset(pthreads_list[i].client_name, 0, sizeof(client_name));
+					no_threads--;
+				}
 			}else
 			{								// EVERYTHING ELSE
-				i = 0;
-				while(dest != pthreads_list[i].index && i < MAX_THREADS && pthreads_list[i].sock <= highest_sock)
-					i++;
+				i = get_dest(dest);
 
-				printf("cmd: %d sock: %d index %d\n",cmd, pthreads_list[i].sock,pthreads_list[i].index);
+				printf("cmd: %d sock: %d dest %d\n",cmd, pthreads_list[i].sock,pthreads_list[i].dest);
 	//			printf("%s\n",tempx);
 
 				if(i < no_threads && pthreads_list[index].sock > 0 && index > 0)
@@ -621,117 +642,79 @@ void *tester_thread(void *socket_desc)
 			case 'a':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_LIGHT;
-				sock = 4;
+				cmd = CABIN_SOUTH;
+				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'b':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_LIGHT;
-				sock = 4;
+				cmd = CABIN_SOUTH;
+				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'c':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_HEATER;
-				sock = 4;
+				cmd = CABIN_KITCHEN;
+				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'd':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = CHICK_HEATER;
-				sock = 4;
+				cmd = CABIN_KITCHEN;
+				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'e':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = BENCH_12V_1;
-				sock = 4;
+				cmd = CABIN_EAST;
+				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'f':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = BENCH_12V_1;
-				sock = 4;
+				cmd = CABIN_EAST;
+				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
-
 			case 'g':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CABIN_SOUTH;
+				cmd = CABIN_DOOR;
 				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'h':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = CABIN_SOUTH;
+				cmd = CABIN_DOOR;
 				sock = 5;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'i':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
-				cmd = CABIN_KITCHEN;
-				sock = 5;
+				cmd = BENCH_LIGHT1;
+				sock = 6;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'j':
 				strcpy(buff,"OFF\0");
 				msg_len = strlen(buff);
-				cmd = CABIN_KITCHEN;
-				sock = 5;
+				cmd = BENCH_LIGHT1;
+				sock = 6;
 				send_msg(sock,msg_len,buff,cmd);
 			break;
 			case 'k':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_EAST;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'l':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_EAST;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'm':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_DOOR;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'n':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_DOOR;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'o':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = BENCH_LIGHT1;
-				sock = 4;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'p':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = BENCH_LIGHT1;
-				sock = 4;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'q':
+				for(i = 0;i < MAX_THREADS;i++)
+				{
+					printf("%s index: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
+				}
+/*
 				strcpy(buff,"closing client program\0");
 				msg_len = strlen(buff);
 				cmd = DISCONNECT;
@@ -741,42 +724,7 @@ void *tester_thread(void *socket_desc)
 				send_msg(sock,msg_len,buff,cmd);
 				sock = 6;
 				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'r':
-				sock = 4;
-				cmd = COOP1_LIGHT;
-				
-				for(i = 0;i < 16;i++)
-				{
-					strcpy(buff,"ON\0");
-					msg_len = strlen(buff);
-					send_msg(sock,msg_len,buff,cmd);
-					uSleep(1,0);
-					strcpy(buff,"OFF\0");
-					msg_len = strlen(buff);
-					send_msg(sock,msg_len,buff,cmd);
-					uSleep(1,0);
-					cmd++;
-				}
-			break;
-			case 's':
-				sock = 6;
-				uSleep(5,0);
-				cmd = COOP1_LIGHT;
-				for(i = 0;i < 16;i++)	// there's 4 of these that aren't wired
-				{
-					strcpy(buff,"ON\0");
-					msg_len = strlen(buff);
-					send_msg(sock,msg_len,buff,cmd);
-					uSleep(0,TIME_DELAY/2);
-//					uSleep(1,0);
-					strcpy(buff,"OFF\0");
-					msg_len = strlen(buff);
-					send_msg(sock,msg_len,buff,cmd);
-					uSleep(0,TIME_DELAY/2);
-//					uSleep(1,0);
-					cmd++;
-				}
+*/
 			break;
 
 		}
