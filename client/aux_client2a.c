@@ -1,4 +1,6 @@
-// aux_client2a.c - calls aux_client.c via ipc - same as aux_client2 but sends a string 
+// aux_client2a.c - has to be run on whatever client the msg applies to 
+// if msg is BENCH_LIGHT it has to be run a session of 147 so dest doesn't apply like 
+// the aux_client2a in multi-client
 #if 1
 #include <stdio.h>
 #include <stdlib.h>
@@ -63,35 +65,34 @@ int main(int argc, char **argv)
 	sock_key = SEND_CMD_HOST_QKEY;
 	sock_qid = msgget(sock_key, IPC_CREAT | 0666);
 
-	if(argc < 4)
+	if(argc < 3)
 	{
-		printf("usage: %s <cmd> <dest> <string>\n",argv[0]);
-		printf("%s will do a cmd on dest with string param \n",argv[0]);
-		printf("dest: 8 = server, 2 = cabin, 3 = testbench...\n");
+		printf("usage: %s <cmd> <string>\n",argv[0]);
+		printf("%s will do a cmd on this client with string param \n",argv[0]);
 		exit(1);
 	}
 	cmd = atoi(argv[1]);
 	print_cmd(cmd);
-	dest = atoi(argv[2]);
 	memset(str,0,sizeof(str));
-	strcpy(str,argv[3]);
+	strcpy(str,argv[2]);
 	msg_len = strlen(str);
-//	printf("dest: %d len: %d string: %s\n",dest, msg_len, str);
+	printf("len: %d string: %s\n", msg_len, str);
 	msg.mtype = msgtype;
 	memset(msg.mtext,0,sizeof(msg.mtext));
 	msg.mtext[0] = cmd;
-	msg.mtext[1] = dest;
-//	msg.mtext[2] = (UCHAR)(msg_len & 0x0F);
-//	msg.mtext[3] = (UCHAR)((msg_len & 0xF0) >> 4);
-	msg.mtext[2] = (UCHAR)msg_len;
-	msg.mtext[3] = (UCHAR)(msg_len >> 4);
+	msg.mtext[1] = (UCHAR)msg_len;
+	msg.mtext[2] = (UCHAR)(msg_len >> 4);
 
-	memcpy(&msg.mtext[4],str,msg_len);
+	memcpy(&msg.mtext[3],str,msg_len);
 
 //	printf("str_len: %d\n",strlen(str));
 
 	for(i = 0;i < msg_len;i++)
-		printf("%c",msg.mtext[i+4]);
+		printf("%c",msg.mtext[i+3]);
+	printf("\n");
+
+	for(i = 0;i < msg_len+5;i++)
+		printf("%02x ",msg.mtext[i]);
 	printf("\n");
 
 	if (msgsnd(sock_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR) == -1) 

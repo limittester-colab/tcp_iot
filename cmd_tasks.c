@@ -294,7 +294,7 @@ UCHAR get_host_cmd_task(int *test)
 */
 #endif
 //	program_start_time = curtime();
-	printf("starting host: %d\n",this_client_id);
+	//printf("starting host: %d\n",this_client_id);
 	ollist_init(&oll);
 	strcpy(oFileName, "odata.dat\0");
 	if(access(oFileName,F_OK) != -1)
@@ -320,7 +320,7 @@ UCHAR get_host_cmd_task(int *test)
 		// msg from sock 
 //		printf("\n..\n");
 		msg.mtype = msgtype;
-		printf("start msgrcv\n");
+//		printf("start msgrcv\n");
 		if (msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR) == -1) 
 		{
 			if (errno != ENOMSG) 

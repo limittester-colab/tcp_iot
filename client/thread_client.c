@@ -112,14 +112,14 @@ void *listen_thread(void *socket_desc)
 
 	for(;;)
 	{
-		printf("sock: %d\n",global_socket);
+//		printf("sock: %d\n",global_socket);
 		msg_len = get_msg();
 		if(msg_len < 0)
 		{
 			return 0;
 		}
 		ret = recv_tcp(&tempx[0],msg_len+1,1);
-		printf("ret: %d msg_len: %d\n",ret,msg_len);
+//		printf("ret: %d msg_len: %d\n",ret,msg_len);
 		cmd = tempx[0];
 		if(cmd == DISCONNECT)
 		{									// DISCONNECT
@@ -195,7 +195,7 @@ void *tester_thread(void *socket_desc)
 	do
 	{
 		key = getc(stdin);
-		printf("key: %c\n",key);
+//		printf("key: %c\n",key);
 		switch(key)
 		{
 			case 'a':
@@ -240,7 +240,6 @@ void *tester_thread(void *socket_desc)
 				dest = 2;
 				send_msg(msg_len, buff, cmd, dest);
 			break;
-
 			case 'g':
 				strcpy(buff,"ON\0");
 				msg_len = strlen(buff);
@@ -346,7 +345,7 @@ void *tester_thread(void *socket_desc)
 				uSleep(5,0);
 				for(j = 0;j < 3;j++)
 				{
-					cmd = COOP1_LIGHT;
+					cmd = CHICK_LIGHT;
 					for(i = 0;i < 16;i++)	// there's 4 of these that aren't wired
 					{
 						strcpy(buff,"ON\0");
