@@ -432,8 +432,8 @@ UCHAR monitor_input_task(int test)
 	{
 		for(bank = 0;bank < NUM_PORTS;bank++)
 		{
-			usleep(_500MS);
-			usleep(_500MS);
+			usleep(_5MS);
+			usleep(_5MS);
 			pthread_mutex_lock( &io_mem_lock);
 			switch(bank)
 			{
@@ -669,7 +669,7 @@ UCHAR basic_controls_task(int *test)
 #ifdef CLIENT_146
 			case DESK_LIGHT:
 				change_output(DESK_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case EAST_LIGHT:	//  relay is wired nc while all others are no 
@@ -677,239 +677,239 @@ UCHAR basic_controls_task(int *test)
 					onoff = 1;
 				else onoff = 0;
 				change_output(EAST_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case NORTHWEST_LIGHT:
 				change_output(NORTHWEST_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case SOUTHEAST_LIGHT:
 				change_output(SOUTHEAST_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case MIDDLE_LIGHT:
 				change_output(MIDDLE_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case WEST_LIGHT:
 				change_output(WEST_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 				
 			case NORTHEAST_LIGHT:
 				change_output(NORTHEAST_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case SOUTHWEST_LIGHT:
 				change_output(SOUTHWEST_LIGHTa,(int)onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case WATER_HEATER:
 				change_output(WATER_HEATERa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case WATER_PUMP:
 				change_output(WATER_PUMPa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case WATER_VALVE1:
 				change_output(WATER_VALVE1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case WATER_VALVE2:
 				change_output(WATER_VALVE2a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case WATER_VALVE3:
 				change_output(WATER_VALVE3a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 #endif
 #ifdef CL_151
 			case  COOP1_LIGHT:
 				change_output(COOP1_LIGHTa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case COOP1_HEATER:
 				change_output(COOP1_HEATERa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case COOP2_LIGHT:
 				change_output(COOP2_LIGHTa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case COOP2_HEATER:
 				change_output(COOP2_HEATERa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case OUTDOOR_LIGHT1:
 				change_output(OUTDOOR_LIGHT1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case OUTDOOR_LIGHT2:
 				change_output(OUTDOOR_LIGHT2a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_1:
 				change_output(UNUSED150_1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_2:
 				change_output(UNUSED150_2a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_3:
 				change_output(UNUSED150_3a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_4:
 				change_output(UNUSED150_4a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_5:
 				change_output(UNUSED150_5a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_6:
 				change_output(UNUSED150_6a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_7:
 				change_output(UNUSED150_7a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_8:
 				change_output(UNUSED150_8a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case UNUSED150_9:
 				change_output(UNUSED150_9a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 			case UNUSED150_10:
 				change_output(UNUSED150_10a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 #endif 
 #ifdef CL_147
 			case  CHICK_LIGHT:
 				change_output(CHICK_LIGHTa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CHICK_HEATER:
 				change_output(CHICK_HEATERa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_12V_1:
 				change_output(BENCH_12V_1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_12V_2:
 				change_output(BENCH_12V_2a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_5V_1:
 				change_output(BENCH_5V_1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_5V_2:
 				change_output(BENCH_5V_2a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_3V3_1:
 				change_output(BENCH_3V3_1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_3V3_2:
 				change_output(BENCH_3V3_2a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_LIGHT1:
 				change_output(BENCH_LIGHT1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BENCH_LIGHT2:
 				change_output(BENCH_LIGHT2a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  BATTERY_HEATER:
 				change_output(BATTERY_HEATERa,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 #endif 
 #ifdef CL_154 
 			case  CABIN_SOUTH:
 				index = change_output(CABIN1a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CABIN_FILECB:
 				index = change_output(CABIN2a,onoff);	// currently these are just bare wires 
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CABIN3:
 				index = change_output(CABIN3a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CABIN_KITCHEN:
 				index = change_output(CABIN4a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CABIN_DOOR:
 				index = change_output(CABIN5a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CABIN_EAST:
 				index = change_output(CABIN6a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CABIN7:
 				index = change_output(CABIN7a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 
 			case  CABIN8:
 				index = change_output(CABIN8a,onoff);
-				usleep(_500MS);
+				usleep(_5MS);
 				break;
 #endif
 			case EXIT_TO_SHELL:
@@ -949,6 +949,7 @@ UCHAR basic_controls_task(int *test)
 				break;
 
 			default:
+				printf("default\n");
 				break;
 		}	// end of switch
 

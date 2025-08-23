@@ -29,6 +29,9 @@ void *check_time_thread(void *);
 //void *tester_thread(void *);
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
+int highest_sock;
+//pthread_mutex_t tcp_read_lock=PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t tcp_write_lock=PTHREAD_MUTEX_INITIALIZER;
 
 int no_threads;
 int win_cl_index = -1;
@@ -57,6 +60,7 @@ int main(int argc , char *argv[])
 	pthread_t test_thread;
 	pthread_t c_time_thread;
 	no_threads = 0;
+	highest_sock = 0;
 	basic_controls_key = BASIC_CONTROLS_KEY;
 //	main_key = MAIN_KEY;
 //	main_qid = msgget(main_key, IPC_CREAT | 0666);
@@ -212,6 +216,8 @@ void *new_sock_thread(void *ret)
 		}
 */
 		pthreads_list[no_threads].sock = new_socket;
+		if(pthreads_list[no_threads].sock > highest_sock)
+			highest_sock = pthreads_list[no_threads].sock;
 		pthreads_list[no_threads].main_key = main_key + no_threads;
 		pthreads_list[no_threads].qid = msgget(pthreads_list[no_threads].main_key, IPC_CREAT | 0666);
 		pthreads_list[no_threads].win_cl = win_cl;
@@ -332,117 +338,123 @@ void *listen_thread(void *socket_desc)
 		}
 
 		cmd = tempx[0];
-
-/*
-		for(i = 0;i < msg_len;i++)
-			printf("%02x ",tempx[i]);
-		printf("\n");
-
-		for(i = 2;i < msg_len+2;i++)
-			printf("%02x ",tempx[i]);
-		printf("\n");
-*/
-
-		if(pthreads_list[index].win_cl == 1)
+		if(cmd < NO_CMDS)
 		{
-			dest = tempx[2];
-			memset(tempx2, 0, sizeof(tempx2));
-			k = 0;
-			for(j = 4;j < msg_len+4;j+=2)
-				tempx2[k++] = tempx[j];
-			msg_len /= 2;
-			msg_len -= 3;
-			memmove(tempx,tempx2,msg_len);
-			printf("win_cl tempx: %s\n",tempx);
-		}else
-		{
-			dest = tempx[1];
-			memmove(tempx,tempx+2,msg_len);
-			tempx[msg_len] = 0;
-		}
-		printf("cmd: %d dest: %d\n",cmd,dest);
 
-		if(cmd == SET_CLIENT_NAME)
-		{								// SET_CLIENT_NAME
-			strcpy(client_name, tempx);
-			printf("this client is called: %s\n\n",client_name);
-//			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
-			//add_client_queue(client_name);
-			strcpy(pthreads_list[index].client_name,client_name);
-		}else if(cmd == SEND_CLIENT_LIST && win_cl_index > 0)// SEND_CLIENT_LIST
-		{								// SEND_CLIENT_LIST
-			for(i = 0;i < MAX_THREADS;i++)
+	/*
+			for(i = 0;i < msg_len;i++)
+				printf("%02x ",tempx[i]);
+			printf("\n");
+
+			for(i = 2;i < msg_len+2;i++)
+				printf("%02x ",tempx[i]);
+			printf("\n");
+	*/
+
+			if(pthreads_list[index].win_cl == 1)
 			{
-//				printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
-				if(pthreads_list[i].sock > 0 && pthreads_list[i].win_cl == 0)
+				dest = tempx[2];
+				memset(tempx2, 0, sizeof(tempx2));
+				k = 0;
+				for(j = 4;j < msg_len+4;j+=2)
+					tempx2[k++] = tempx[j];
+				msg_len /= 2;
+				msg_len -= 3;
+				memmove(tempx,tempx2,msg_len);
+				printf("win_cl tempx: %s\n",tempx);
+			}else
+			{
+				dest = tempx[1];
+				memmove(tempx,tempx+2,msg_len);
+				tempx[msg_len] = 0;
+			}
+			printf("cmd: %d dest: %d\n",cmd,dest);
+
+			if(cmd == SET_CLIENT_NAME)
+			{								// SET_CLIENT_NAME
+				strcpy(client_name, tempx);
+				printf("this client is called: %s\n\n",client_name);
+	//			cl = (CLIENT_NAME *)malloc(sizeof(CLIENT_NAME));
+				//add_client_queue(client_name);
+				strcpy(pthreads_list[index].client_name,client_name);
+			}else if(cmd == SEND_CLIENT_LIST && win_cl_index > 0)// SEND_CLIENT_LIST
+			{								// SEND_CLIENT_LIST
+				for(i = 0;i < MAX_THREADS;i++)
 				{
-					sprintf(tempx,"%d %s %d", pthreads_list[i].index, pthreads_list[i].ipadd, pthreads_list[i].sock);
-					printf("%s\n",tempx);
-//					printf("%d\n",pthreads_list[win_cl_index].sock);
-					msg_len = strlen(tempx);
+	//				printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
+					if(pthreads_list[i].sock > 0 && pthreads_list[i].win_cl == 0)
+					{
+						sprintf(tempx,"%d %s %d", pthreads_list[i].index, pthreads_list[i].ipadd, pthreads_list[i].sock);
+						printf("%s\n",tempx);
+	//					printf("%d\n",pthreads_list[win_cl_index].sock);
+						msg_len = strlen(tempx);
+						send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
+						uSleep(0,TIME_DELAY/2);
+					}
+				}
+			}else if(cmd == UPDATE_STATUS)
+			{								// UPDATE_STATUS
+	//			printf("staus: %s\n",tempx);
+	/*
+				gettimeofday(&mtv, NULL);
+				curtime2 = mtv.tv_sec;
+	*/
+				now = time(NULL);
+	/*
+				tm = *localtime(&now);
+				memset(tempx2,0,sizeof(tempx));
+				sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+				printf("%s\n",tempx2);
+	*/
+				for(i = 0;i < MAX_THREADS;i++)
+				{
+					if(strcmp(pthreads_list[i].client_name,tempx) == 0)
+					{
+	//					printf("%s\n", pthreads_list[i].time_stamp);
+						pthreads_list[i].time_stamp = now;
+					}
+				}
+			}else if(cmd == SEND_IOT_VALUES)
+			{								// SEND_IOT_VALUES
+				printf("IOT: %s\n",tempx);
+				if(win_cl_index > 0)
 					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
-					uSleep(0,TIME_DELAY/2);
-				}
-			}
-		}else if(cmd == UPDATE_STATUS)
-		{								// UPDATE_STATUS
-//			printf("staus: %s\n",tempx);
-/*
-			gettimeofday(&mtv, NULL);
-			curtime2 = mtv.tv_sec;
-*/
-			now = time(NULL);
-/*
-			tm = *localtime(&now);
-			memset(tempx2,0,sizeof(tempx));
-			sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
-			printf("%s\n",tempx2);
-*/
-			for(i = 0;i < MAX_THREADS;i++)
-			{
-				if(strcmp(pthreads_list[i].client_name,tempx) == 0)
+			}else if(cmd == DISCONNECT)
+			{								// DISCONNECT
+				i = 0;
+				while(i < no_threads)
 				{
-//					printf("%s\n", pthreads_list[i].time_stamp);
-					pthreads_list[i].time_stamp = now;
+					if(pthreads_list[i].sock > 0) //  && pthreads_list[i].win_cl == 0)
+					{
+						send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
+						printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
+						close(pthreads_list[i].sock);
+						pthreads_list[i].sock = -1;
+						uSleep(0,TIME_DELAY/2);
+					}
+					i++;
 				}
-			}
-		}else if(cmd == SEND_IOT_VALUES)
-		{								// SEND_IOT_VALUES
-			printf("IOT: %s\n",tempx);
-			if(win_cl_index > 0)
-				send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
-		}else if(cmd == DISCONNECT)
-		{								// DISCONNECT
-			i = 0;
-			while(i < no_threads)
-			{
-				if(pthreads_list[i].sock > 0) //  && pthreads_list[i].win_cl == 0)
+			}else
+			{								// EVERYTHING ELSE
+				i = 0;
+				while(dest != pthreads_list[i].index && i < MAX_THREADS && pthreads_list[i].sock <= highest_sock)
+					i++;
+
+				printf("cmd: %d sock: %d index %d\n",cmd, pthreads_list[i].sock,pthreads_list[i].index);
+	//			printf("%s\n",tempx);
+
+				if(i < no_threads && pthreads_list[index].sock > 0 && index > 0)
 				{
+					printf("send_msg: %d\n",pthreads_list[i].sock);
 					send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
-					printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
-					close(pthreads_list[i].sock);
-					pthreads_list[i].sock = -1;
-					uSleep(0,TIME_DELAY/2);
 				}
-				i++;
 			}
-		}else
-		{								// EVERYTHING ELSE
-			i = 0;
-			while(dest != pthreads_list[i].index && i < MAX_THREADS)
-				i++;
-
-			printf("cmd: %d sock: %d index %d\n",cmd, pthreads_list[i].sock,pthreads_list[i].index);
-//			printf("%s\n",tempx);
-
-			if(i < no_threads && pthreads_list[index].sock > 0 && index > 0)
-				send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
+			if(msg_len < 0)
+			{
+				printf("bad msg_len 2: %d\n",msg_len);
+			}
+			index = 0;
 		}
-		if(msg_len < 0)
-		{
-			printf("bad msg_len 2: %d\n",msg_len);
-		}
-		index = 0;
 	}
 	if(msg_len == 0)
 	{
@@ -833,6 +845,7 @@ void send_msg(int sd, int msg_len, UCHAR *msg, UCHAR msg_type)
 
 	for(i = 0;i < msg_len;i++)
 		send_tcp(sd, (UCHAR *)&msg[i],1);
+	uSleep(0,TIME_DELAY/4);
 }
 /****************************************************************************************************/
 // get/send_msgb is what the old server used to communicate with the
@@ -900,7 +913,7 @@ int recv_tcp(int sd, UCHAR *str, int strlen,int block)
 	memset(errmsg,0,20);
 //		printf("start get_sock\n");
 //		pthread_mutex_lock( &tcp_read_lock);
-	ret = get_sock(sd, str,strlen,block,&errmsg[0]);
+		ret = get_sock(sd, str,strlen,block,&errmsg[0]);
 //		pthread_mutex_unlock(&tcp_read_lock);
 //		printf("end get_sock\n");
 //printf("%s\n",str);

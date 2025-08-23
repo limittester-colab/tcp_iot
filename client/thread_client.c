@@ -32,6 +32,9 @@ pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
 pthread_t test_thread;
 
+//pthread_mutex_t tcp_read_lock=PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t tcp_write_lock=PTHREAD_MUTEX_INITIALIZER;
+
 void *tester_thread(void *);
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 #endif
@@ -611,9 +614,9 @@ int send_tcp(UCHAR *str,int len)
 	int ret = 0;
 	char errmsg[30];
 	memset(errmsg,0,30);
-	//pthread_mutex_lock( &tcp_write_lock);
+//	pthread_mutex_lock( &tcp_write_lock);
 	ret = put_sock(str,len,1,&errmsg[0]);
-	//pthread_mutex_unlock(&tcp_write_lock);
+//	pthread_mutex_unlock(&tcp_write_lock);
 	if(ret < 0 && (strcmp(errmsg,"Success") != 0))
 	{
 		printf(errmsg);

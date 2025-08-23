@@ -12,13 +12,13 @@ static enum cmd_types
 	MIDDLE_LIGHT,
 	WEST_LIGHT,
 	NORTHEAST_LIGHT,
-	SOUTHWEST_LIGHT,
-	WATER_HEATER,
+	SOUTHWEST_LIGHT,	// last one for garage (146)
+	WATER_HEATER,		// first one for garage2 (146)
 	WATER_VALVE1,
 	WATER_VALVE2,
 	WATER_VALVE3,
-	WATER_PUMP,
-	CHICK_LIGHT,
+	WATER_PUMP,			// last one for 146
+	CHICK_LIGHT,		// start of 147
 	CHICK_HEATER,
 	BENCH_12V_1,
 	BENCH_12V_2,
@@ -29,7 +29,7 @@ static enum cmd_types
 	BENCH_LIGHT1,
 	BENCH_LIGHT2,
 	BATTERY_HEATER,		// last one for 147
-	CABIN_SOUTH,				// start of 154
+	CABIN_SOUTH,		// start of 154
 	CABIN_FILECB,
 	CABIN3,
 	CABIN_KITCHEN,
@@ -37,7 +37,7 @@ static enum cmd_types
 	CABIN_EAST,
 	CABIN7,
 	CABIN8,				// last one for 154
-	COOP1_LIGHT,		// start of 150
+	COOP1_LIGHT,		// start of 151
 	COOP1_HEATER,
 	COOP2_LIGHT,
 	COOP2_HEATER,
