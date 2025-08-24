@@ -17,9 +17,10 @@
 #include "mytypes.h"
 #include "tasks.h"
 #define MAX 80
+#define TIME_DELAY_1 40,0	// this gives a diff of around 360
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
-
+static CMD_STRUCT cmd_array[];
 void *listen_thread(void *);
 void *send_thread(void *);
 void *read_queue_thread(void *);
@@ -48,6 +49,43 @@ int get_dest(int dest)
 	while(dest != pthreads_list[i].dest && i < MAX_THREADS && pthreads_list[i].sock <= highest_sock)
 		i++;
 	return i;
+}
+
+void print_cmd(UCHAR cmd)
+{
+	if(cmd >= NO_CMDS)
+	{
+		printf("unknown cmd: %d\n",cmd);
+	}else printf("%d: %s\n",cmd, cmd_array[cmd].cmd_str);
+}
+/****************************************************************************************************/
+int uSleep(time_t sec, long nanosec)
+{
+/* Setup timespec */
+	struct timespec req;
+	req.tv_sec = sec;
+	req.tv_nsec = nanosec;
+
+/* Loop until we've slept long enough */
+	do
+	{
+/* Store remainder back on top of the original required time */
+		if( 0 != nanosleep( &req, &req ) )
+		{
+/* If any error other than a signal interrupt occurs, return an error */
+			if(errno != EINTR)
+			{
+				return -1;
+			}
+		}
+		else
+		{
+/* nanosleep succeeded, so exit the loop */
+			break;
+		}
+	} while ( req.tv_sec > 0 || req.tv_nsec > 0 );
+
+	return 0;									  /* Return success */
 }
 #endif
 /****************************************************************************************************/
@@ -103,19 +141,19 @@ int main(int argc , char *argv[])
 		perror("could not create thread");
 		return 1;
 	}
-
+*/
  	if( pthread_create( &time_thread , NULL ,  timer_thread , (void*) pret) < 0)
 	{
 		perror("could not create thread");
 //		return 1;
 	}
+/*
  	if( pthread_create( &c_time_thread , NULL ,  check_time_thread , (void*) pret) < 0)
 	{
 		perror("could not create thread");
 //		return 1;
 	}
 */
-
 //	printf("total no_threads 1: %d\n",no_threads);
 	while(no_threads < 1)
 	{
@@ -278,9 +316,8 @@ void *listen_thread(void *socket_desc)
 {
 	int msgtype = 1;
 	struct msgqbuf msg;
-	UCHAR tempx[200];
-	UCHAR tempx2[100];
-	UCHAR tempx3[10];
+	UCHAR tempx[50];
+	UCHAR tempx2[50];
 	int msg_len;
 	int ret;
 	UCHAR cmd;
@@ -292,7 +329,8 @@ void *listen_thread(void *socket_desc)
 	int index = -1;
 	struct tm t;
 	struct tm tm;
-	time_t now;
+	time_t now, then;
+	double time_diff;
 
 	//Get the socket descriptor
 	int sock = *(int*)socket_desc;
@@ -320,9 +358,9 @@ void *listen_thread(void *socket_desc)
 //			printf("win cl\n");
 			msg_len = get_msgb(sock);
 			
-			printf("msg_len: %d\n",msg_len);
+//			printf("msg_len: %d\n",msg_len);
 			ret = recv_tcp(pthreads_list[index].sock, &tempx[0],msg_len,1);
-			printf("ret: %d\n",ret);
+//			printf("ret: %d\n",ret);
 //			for(i = 0;i < 10;i++)
 //				printf("%02x ",tempx[i]);
 //			printf("\n");
@@ -346,8 +384,10 @@ void *listen_thread(void *socket_desc)
 		}
 
 		cmd = tempx[0];
-		if(cmd < NO_CMDS)
+		
+		if(cmd <= NO_CMDS && cmd > 0)
 		{
+			print_cmd(cmd);
 	/*
 			for(i = 0;i < msg_len;i++)
 				printf("%02x ",tempx[i]);
@@ -367,14 +407,14 @@ void *listen_thread(void *socket_desc)
 				msg_len /= 2;
 				msg_len -= 3;
 				memmove(tempx,tempx2,msg_len);
-				printf("win_cl tempx: %s\n",tempx);
+//				printf("win_cl tempx: %s\n",tempx);
 			}else
 			{
 				dest = tempx[1];
 				memmove(tempx,tempx+2,msg_len);
 				tempx[msg_len] = 0;
 			}
-			printf("cmd: %d dest: %d\n",cmd,dest);
+//			printf("cmd: %d dest: %d\n",cmd,dest);
 
 			if(cmd == SET_CLIENT_NAME)
 			{								// SET_CLIENT_NAME
@@ -416,8 +456,22 @@ void *listen_thread(void *socket_desc)
 				{
 					if(strcmp(pthreads_list[i].client_name,tempx) == 0)
 					{
-	//					printf("%s\n", pthreads_list[i].time_stamp);
+						then = pthreads_list[i].time_stamp;
+						time_diff = difftime(now,then);
 						pthreads_list[i].time_stamp = now;
+						if(then > 0)
+						{
+							printf("diff: %.0f\n",time_diff);
+							tm = *localtime(&now);
+							memset(tempx2,0,sizeof(tempx2));
+							sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+							strcat(tempx," ");
+							strcat(tempx,tempx2);
+							printf("%s\n",tempx);
+							msg_len = strlen(tempx);
+							cmd = SEND_MESSAGE2;
+							send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, (UCHAR *)tempx, cmd);
+						}
 					}
 				}
 			}else if(cmd == SEND_IOT_VALUES)
@@ -440,12 +494,12 @@ void *listen_thread(void *socket_desc)
 						pthreads_list[i].sock = -1;
 						pthreads_list[i].dest = -1;
 						memset(pthreads_list[i].client_name, 0, sizeof(client_name));
-						no_threads--;
 					}
 					i++;
 				}
+				return 0;
 			}else if(cmd == DISCONNECT)
-			{
+			{								// DISCONNECT
 				i = get_dest(dest);
 				if(i < no_threads && index > 0 && pthreads_list[i].sock > 0)
 				{
@@ -461,12 +515,12 @@ void *listen_thread(void *socket_desc)
 			{								// EVERYTHING ELSE
 				i = get_dest(dest);
 
-				printf("cmd: %d sock: %d dest %d\n",cmd, pthreads_list[i].sock,pthreads_list[i].dest);
+//				printf("cmd: %d sock: %d dest %d\n",cmd, pthreads_list[i].sock,pthreads_list[i].dest);
 	//			printf("%s\n",tempx);
 
 				if(i < no_threads && pthreads_list[index].sock > 0 && index > 0)
 				{
-					printf("send_msg: %d\n",pthreads_list[i].sock);
+//					printf("send_msg: %d\n",pthreads_list[i].sock);
 					send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
 				}
 			}
@@ -475,7 +529,7 @@ void *listen_thread(void *socket_desc)
 				printf("bad msg_len 2: %d\n",msg_len);
 			}
 			index = 0;
-		}
+		}else printf("bad cmd: %d\n",cmd);
 	}
 	if(msg_len == 0)
 	{
@@ -549,6 +603,9 @@ void *read_queue_thread(void *socket_desc)
 	free(socket_desc);
 }
 /****************************************************************************************************/
+// periodically send a SEND_STATUS to each client and see if it responds by sending back
+// an UPDATE_STATUS - if there is too long a delay then it must be down, so take it 
+// off the list and delete the listen_thread assoc'd with it 
 void *timer_thread(void *ret)
 {
 	char buff[40];
@@ -560,12 +617,12 @@ void *timer_thread(void *ret)
 
 	strcpy(buff,"timer \0");
 
-	uSleep(20,0);
+	uSleep(TIME_DELAY_1);
 	j = 0;
 	printf("timer thread started\n");
 	for(;;)
 	{
-		uSleep(60,0);
+		uSleep(TIME_DELAY_1);
 		for(i = 0;i < no_threads;i++)
 		{
 			if(pthreads_list[i].sock > 0)
@@ -580,28 +637,28 @@ void *timer_thread(void *ret)
 				else
 					send_msg(pthreads_list[i].sock, n, buff, cmd);
 				j++;
-				uSleep(60,0);
+				uSleep(TIME_DELAY_1);
 			}
-			uSleep(60,0);
+			uSleep(TIME_DELAY_1);
 		}
 
 	}
 }
 /****************************************************************************************************/
+// not used
 void *check_time_thread(void *ret)
 {
 	struct tm tm;
 	time_t now, then;
 	char tempx[20];
-	double time_diff;
 	int i;
 
-	uSleep(60,0);
+	uSleep(TIME_DELAY_1);
 	i = 0;
 	printf("start check time thread\n");
 	for(;;)
 	{
-		uSleep(60,0);
+		uSleep(TIME_DELAY_1);
 		then = pthreads_list[i].time_stamp;
 		printf("checking %s\n",pthreads_list[i].ipadd);
 		if(++i >= no_threads)
@@ -609,13 +666,15 @@ void *check_time_thread(void *ret)
 		if(then != 0)
 		{
 			now = time(NULL);
-			time_diff = difftime(now,then);
-			printf("diff: %.0f\n",time_diff);
+//			time_diff = difftime(now,then);
+//			printf("\ndiff: %.0f\n\n",time_diff);
+/*
 			tm = *localtime(&now);
 			memset(tempx,0,sizeof(tempx));
 			sprintf(tempx,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
 			printf("%s\n",tempx);
-			uSleep(60,0);
+*/
+			uSleep(TIME_DELAY_1);
 		}else memset(tempx,0,sizeof(tempx));
 	}
 }
