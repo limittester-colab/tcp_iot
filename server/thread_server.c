@@ -511,6 +511,11 @@ void *listen_thread(void *socket_desc)
 					memset(pthreads_list[i].client_name, 0, sizeof(client_name));
 					no_threads--;
 				}
+			}else if(cmd == SEND_IOT_CMD)
+			{								// SEND_IOT_CMD
+				printf("IOT cmd: %s\n",tempx);
+				if(win_cl_index > 0)
+					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
 			}else
 			{								// EVERYTHING ELSE
 				i = get_dest(dest);
@@ -619,7 +624,7 @@ void *timer_thread(void *ret)
 
 	uSleep(TIME_DELAY_1);
 	j = 0;
-	printf("timer thread started\n");
+//	printf("timer thread started\n");
 	for(;;)
 	{
 		uSleep(TIME_DELAY_1);
@@ -773,17 +778,23 @@ void *tester_thread(void *socket_desc)
 				{
 					printf("%s index: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
 				}
-/*
-				strcpy(buff,"closing client program\0");
-				msg_len = strlen(buff);
-				cmd = DISCONNECT;
-				sock = 4;
-				send_msg(sock,msg_len,buff,cmd);
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-				sock = 6;
-				send_msg(sock,msg_len,buff,cmd);
-*/
+			break;
+			case 'l':
+				for(i = 0;i < MAX_THREADS;i++)
+				{
+					if(strcmp(pthreads_list[i].client_name,"wifi client") == 0)
+					{
+						printf("%s sock: %d dest %d\n", pthreads_list[i].client_name, pthreads_list[i].sock,pthreads_list[i].dest);
+//						send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
+						close(pthreads_list[i].sock);
+						pthread_kill(pthreads_list[i].listen_thread,NULL);
+						pthreads_list[i].sock = -1;
+						pthreads_list[i].dest = -1;
+						memset(pthreads_list[i].client_name, 0, 30);
+						memset(pthreads_list[i].ipadd, 0, 4);
+						no_threads--;
+					}
+				}
 			break;
 
 		}
@@ -992,7 +1003,6 @@ int get_sock(int sd, UCHAR *buf, int buflen, int block, char *errmsg)
 		strcpy(errmsg,strerror(errno));
 		sprintf(extra_msg," %d",errno);
 		strcat(errmsg,extra_msg);
-		strcat(errmsg," get_sock");
 		printf("get_sock: %d %s\n",sd,errmsg);
 	}else strcpy(errmsg,"Success\0");
 	return rc;
