@@ -17,7 +17,7 @@
 #include "mytypes.h"
 #include "tasks.h"
 #define MAX 80
-#define TIME_DELAY_1 40,0	// this gives a diff of around 360
+#define TIME_DELAY_1 40,0	// this gives a diff of around 360 if just the 4 clients - 440 if counting the wifi client too
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 static CMD_STRUCT cmd_array[];
@@ -26,13 +26,13 @@ void *send_thread(void *);
 void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 void *timer_thread(void *);
-void *check_time_thread(void *);
 void *tester_thread(void *);
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
 int highest_sock;
 //pthread_mutex_t tcp_read_lock=PTHREAD_MUTEX_INITIALIZER;
 //pthread_mutex_t tcp_write_lock=PTHREAD_MUTEX_INITIALIZER;
+static char client_name[30];
 
 int no_threads;
 int win_cl_index = -1;
@@ -103,13 +103,15 @@ int main(int argc , char *argv[])
 	pthread_t sock_thread;
 	pthread_t time_thread;
 	pthread_t test_thread;
-	pthread_t c_time_thread;
+	pthread_t sender_thread;
 	no_threads = 0;
 	highest_sock = 0;
 	basic_controls_key = BASIC_CONTROLS_KEY;
+//	send_msg_key = SEND_MSG_KEY;
 //	main_key = MAIN_KEY;
 //	main_qid = msgget(main_key, IPC_CREAT | 0666);
 	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
+//	send_msg_qid = msgget(send_msg_key, IPC_CREAT | 0666);
 
 	for(i = 0;i < MAX_THREADS;i++)
 	{
@@ -148,10 +150,10 @@ int main(int argc , char *argv[])
 //		return 1;
 	}
 /*
- 	if( pthread_create( &c_time_thread , NULL ,  check_time_thread , (void*) pret) < 0)
+	if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
 	{
-		perror("could not create thread");
-//		return 1;
+		perror("could not create sender_thread");
+		return 1;
 	}
 */
 //	printf("total no_threads 1: %d\n",no_threads);
@@ -175,7 +177,7 @@ int main(int argc , char *argv[])
 	pthread_kill(sock_thread, 0);
 	pthread_kill(test_thread, 0);
 //	pthread_kill(time_thread, 0);
-//	pthread_kill(c_time_thread, 0);
+//	pthread_kill(sender_thread, 0);
 	printf("done\n");
 	return 0;
 }
@@ -298,18 +300,11 @@ void *new_sock_thread(void *ret)
 		printf("no_threads: %d\n",no_threads);
 //		printf("sock: %d\n",new_socket);
 		no_threads++;
-/*
-		if( pthread_create( &sender_thread , NULL ,  send_thread , (void*) new_sock) < 0)
-		{
-			perror("could not create sender_thread");
-			return 1;
-		}
-*/
+
 		//Now join the thread , so that we dont terminate before the thread
 //		puts("Handler assigned");
 //		pthread_join( sniffer_thread , NULL);
 	}
-	
 }
 /****************************************************************************************************/
 void *listen_thread(void *socket_desc)
@@ -323,7 +318,6 @@ void *listen_thread(void *socket_desc)
 	UCHAR cmd;
 	UCHAR dest;
 	int i,j,k;
-	char client_name[30];
 	CLIENT_NAME *cl;
 	msg.mtype = msgtype;
 	int index = -1;
@@ -341,6 +335,12 @@ void *listen_thread(void *socket_desc)
 	msg_len = 1;
 	memset(client_name, 0, sizeof(client_name));
 
+	now = time(NULL);
+	tm = *localtime(&now);
+	memset(tempx2,0,sizeof(tempx));
+	sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+	printf("%s\n",tempx2);
+
 	for(;;)
 	{
 		index = 0;
@@ -353,7 +353,7 @@ void *listen_thread(void *socket_desc)
 		memset(tempx,0,sizeof(tempx));
 //		printf("start get_msg\n");
 		
-		if(pthreads_list[index].win_cl == 1)
+		if(pthreads_list[index].win_cl == 1)		// if this listen_thread is for the windows client
 		{
 //			printf("win cl\n");
 			msg_len = get_msgb(sock);
@@ -370,7 +370,7 @@ void *listen_thread(void *socket_desc)
 				printf("win_cl_index: %d\n",win_cl_index);
 			}
 		}
-		else
+		else										// any of the other clients
 		{
 			msg_len = get_msg(pthreads_list[index].sock);
 //			printf("msg_len: %d\n",msg_len);
@@ -552,26 +552,42 @@ void *listen_thread(void *socket_desc)
 	return 0;
 }
 /****************************************************************************************************/
+// send_thread blocks on the ipc msgrcv() to send a tcp/ip msg 
 void *send_thread(void *socket_desc)
 {
 	char buff[MAX];
     int n;
 	int cmd = 44;
+	int msgtype = 1;
 	int sock = *(int*)socket_desc;
+	struct msgqbuf msg;		// this has to be shared by send_sock_msg & get_host_cmd_task
+	msg.mtype = msgtype;
+//	memset(msg.mtext,0,sizeof(msg.mtext));
+	bzero(msg.mtext,sizeof(msg.mtext));
+	int ret;
+
 	printf("start send_thread\n");
-    for (;;) 
+	do
 	{
-        bzero(buff, sizeof(buff));
-        printf("Enter the string : ");
-        n = 0;
-        while ((buff[n++] = getchar()) != '\n');
-		n--;
-		printf("msg_len: %d\n",n);
-		send_msg(sock, n, buff, cmd);
+//		ret = msgrcv(recv_msg_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
+		if(ret == -1)
+		{
+			if(errno != ENOMSG)
+			{
+				perror("msgrcv");
+				printf("msgrcv error\n");
+				exit(EXIT_FAILURE);
+			}
+//			printf("ret: %ld %d\n",ret,errno);
+		}
+		printf("send thread: %s\n",msg.mtext);
 	}
+	while(ret > 0);
+	free(socket_desc);
 }
 /****************************************************************************************************/
-void *read_queue_thread(void *socket_desc)
+// read_thread blocks on the tcp/ip read() and then sends a 
+void *read_thread(void *socket_desc)
 {
 	int msgtype = 1;
 	struct msgqbuf msg;
@@ -585,13 +601,7 @@ void *read_queue_thread(void *socket_desc)
 
 	do
 	{
-		index = 0;
-		while(pthreads_list[index].sock != sock && index < no_threads)
-		{
-			printf("index: %d sock: %d\n", index, pthreads_list[index].sock);
-			index++;
-		}
-		ret = msgrcv(pthreads_list[index].qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
+//		ret = msgrcv(recv_msg_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
 		if(ret == -1)
 		{
 			if(errno != ENOMSG)
@@ -646,41 +656,6 @@ void *timer_thread(void *ret)
 			}
 			uSleep(TIME_DELAY_1);
 		}
-
-	}
-}
-/****************************************************************************************************/
-// not used
-void *check_time_thread(void *ret)
-{
-	struct tm tm;
-	time_t now, then;
-	char tempx[20];
-	int i;
-
-	uSleep(TIME_DELAY_1);
-	i = 0;
-	printf("start check time thread\n");
-	for(;;)
-	{
-		uSleep(TIME_DELAY_1);
-		then = pthreads_list[i].time_stamp;
-		printf("checking %s\n",pthreads_list[i].ipadd);
-		if(++i >= no_threads)
-			i = 0;
-		if(then != 0)
-		{
-			now = time(NULL);
-//			time_diff = difftime(now,then);
-//			printf("\ndiff: %.0f\n\n",time_diff);
-/*
-			tm = *localtime(&now);
-			memset(tempx,0,sizeof(tempx));
-			sprintf(tempx,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
-			printf("%s\n",tempx);
-*/
-			uSleep(TIME_DELAY_1);
-		}else memset(tempx,0,sizeof(tempx));
 	}
 }
 /****************************************************************************************************/
@@ -990,14 +965,30 @@ int get_sock(int sd, UCHAR *buf, int buflen, int block, char *errmsg)
 		rc = recv(sd,buf,buflen,MSG_WAITALL);
 	else
 		rc = recv(sd,buf,buflen,MSG_DONTWAIT);
+
 //	if(rc < 0 && errno != 11)
-/*
-	for(i = 0;i < rc;i++)
+	if(rc < 0)
 	{
-		printf("%02x ",buf[i]);
+		for(i = 0;i < buflen;i++)
+		{
+			printf("%02x ",buf[i]);
+		}
+		printf("\n");
+		// kill this thread
+		i = 0;
+		while(pthreads_list[i].sock != sd && pthreads_list[i].sock <= highest_sock)
+		{
+			i++;
+		}
+		close(pthreads_list[i].sock);
+		pthreads_list[i].sock = -1;
+		pthreads_list[i].dest = -1;
+		memset(pthreads_list[i].client_name, 0, sizeof(client_name));
+		no_threads--;
+		pthread_kill(pthreads_list[i].listen_thread,NULL);
+		return -1;
 	}
-	printf("\n");
-*/
+
 	if(rc < 0)
 	{
 		strcpy(errmsg,strerror(errno));

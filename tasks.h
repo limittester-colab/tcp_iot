@@ -44,6 +44,7 @@ struct msgqbuf
 #define PFIFO                   5
 #define INHERIT                 6
 #define MAIN_KEY				1303
+#define SEND_MSG_KEY			1304
 #define BASIC_CONTROLS_KEY		1400
 #define PROTOPORT				5193				  /* default protocol port number */
 #define QLEN					6					  /* size of request queue        */
@@ -69,6 +70,7 @@ static int main_qid;
 static key_t main_key;
 static int basic_controls_qid;
 static key_t basic_controls_key;
+static int send_msg_qid;
 static int close_program;
 static int this_client_id;
 UCHAR get_host_cmd_task(int *test);
