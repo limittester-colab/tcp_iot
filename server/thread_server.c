@@ -353,9 +353,19 @@ void *listen_thread(void *socket_desc)
 		memset(tempx,0,sizeof(tempx));
 //		printf("start get_msg\n");
 		
+/* to view raw data coming from client
+		for(;;)
+		{
+			ret = recv(pthreads_list[index].sock,&tempx[0],1,MSG_WAITALL);
+			if(tempx[0] >= 32 && tempx[0] < 127)
+				printf("%c\n",tempx[0]);
+			else 
+				printf("%02x\n",tempx[0]);
+		}
+*/
 		if(pthreads_list[index].win_cl == 1)		// if this listen_thread is for the windows client
 		{
-//			printf("win cl\n");
+			printf("win cl\n");
 			msg_len = get_msgb(sock);
 			
 //			printf("msg_len: %d\n",msg_len);
@@ -379,15 +389,14 @@ void *listen_thread(void *socket_desc)
 			else
 			{
 				printf("bad msg_len 1 %d\n",msg_len);
-				return 0;
 			}
 		}
 
 		cmd = tempx[0];
 		
+//		print_cmd(cmd);
 		if(cmd <= NO_CMDS && cmd > 0)
 		{
-			print_cmd(cmd);
 	/*
 			for(i = 0;i < msg_len;i++)
 				printf("%02x ",tempx[i]);
@@ -425,6 +434,7 @@ void *listen_thread(void *socket_desc)
 				strcpy(pthreads_list[index].client_name,client_name);
 			}else if(cmd == SEND_CLIENT_LIST && win_cl_index > 0)// SEND_CLIENT_LIST
 			{								// SEND_CLIENT_LIST
+				printf("send client list\n");
 				for(i = 0;i < MAX_THREADS;i++)
 				{
 	//				printf("%d %s\n",pthreads_list[i].sock, pthreads_list[i].ipadd);
@@ -440,6 +450,7 @@ void *listen_thread(void *socket_desc)
 				}
 			}else if(cmd == UPDATE_STATUS)
 			{								// UPDATE_STATUS
+				printf("update status\n");
 	//			printf("staus: %s\n",tempx);
 	/*
 				gettimeofday(&mtv, NULL);
@@ -477,8 +488,9 @@ void *listen_thread(void *socket_desc)
 			}else if(cmd == SEND_IOT_VALUES)
 			{								// SEND_IOT_VALUES
 				printf("IOT: %s\n",tempx);
-				if(win_cl_index > 0)
-					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
+				msg_len = strlen(tempx);
+//				if(win_cl_index > 0)
+//					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);		// this craps everything out when wifi client is running
 			}else if(cmd == DISCONNECT_ALL)
 			{								// DISCONNECT_ALL
 				i = 0;
@@ -514,8 +526,9 @@ void *listen_thread(void *socket_desc)
 			}else if(cmd == SEND_IOT_CMD)
 			{								// SEND_IOT_CMD
 				printf("IOT cmd: %s\n",tempx);
-				if(win_cl_index > 0)
-					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
+				msg_len = strlen(tempx);
+//				if(win_cl_index > 0)
+//					send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, tempx, cmd);
 			}else
 			{								// EVERYTHING ELSE
 				i = get_dest(dest);
@@ -534,7 +547,11 @@ void *listen_thread(void *socket_desc)
 				printf("bad msg_len 2: %d\n",msg_len);
 			}
 			index = 0;
-		}else printf("bad cmd: %d\n",cmd);
+		}else 
+		{
+			printf("bad cmd: %d\n",cmd);
+			uSleep(1,0);
+		}
 	}
 	if(msg_len == 0)
 	{
@@ -679,82 +696,12 @@ void *tester_thread(void *socket_desc)
 		switch(key)
 		{
 			case 'a':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_SOUTH;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'b':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_SOUTH;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'c':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_KITCHEN;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'd':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_KITCHEN;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'e':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_EAST;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'f':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_EAST;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'g':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_DOOR;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'h':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = CABIN_DOOR;
-				sock = 5;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'i':
-				strcpy(buff,"ON\0");
-				msg_len = strlen(buff);
-				cmd = BENCH_LIGHT1;
-				sock = 6;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'j':
-				strcpy(buff,"OFF\0");
-				msg_len = strlen(buff);
-				cmd = BENCH_LIGHT1;
-				sock = 6;
-				send_msg(sock,msg_len,buff,cmd);
-			break;
-			case 'k':
 				for(i = 0;i < MAX_THREADS;i++)
 				{
 					printf("%s index: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
 				}
 			break;
-			case 'l':
+			case 'b':
 				for(i = 0;i < MAX_THREADS;i++)
 				{
 					if(strcmp(pthreads_list[i].client_name,"wifi client") == 0)
@@ -769,6 +716,10 @@ void *tester_thread(void *socket_desc)
 						memset(pthreads_list[i].ipadd, 0, 4);
 						no_threads--;
 					}
+				}
+				for(i = 0;i < MAX_THREADS;i++)
+				{
+					printf("%s index: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
 				}
 			break;
 
@@ -974,7 +925,9 @@ int get_sock(int sd, UCHAR *buf, int buflen, int block, char *errmsg)
 			printf("%02x ",buf[i]);
 		}
 		printf("\n");
+
 		// kill this thread
+/*
 		i = 0;
 		while(pthreads_list[i].sock != sd && pthreads_list[i].sock <= highest_sock)
 		{
@@ -986,7 +939,8 @@ int get_sock(int sd, UCHAR *buf, int buflen, int block, char *errmsg)
 		memset(pthreads_list[i].client_name, 0, sizeof(client_name));
 		no_threads--;
 		pthread_kill(pthreads_list[i].listen_thread,NULL);
-		return -1;
+*/
+		return -3;
 	}
 
 	if(rc < 0)

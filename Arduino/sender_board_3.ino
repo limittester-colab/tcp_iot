@@ -12,12 +12,14 @@
 //#include <DHT.h>
 
 // Set your Board ID (ESP32 Sender #1 = BOARD_ID 1, ESP32 Sender #2 = BOARD_ID 2, etc)
-#define BOARD_ID 2
+#define BOARD_ID 3
 
 // Digital pin connected to the DHT sensor
 #define DHTPIN 4  
-#define PUSHBUTTON D0
-int buttonstate;
+#define PUSHBUTTON1 D0
+#define PUSHBUTTON2 D1
+int buttonstate1;
+int buttonstate2;
 
 // Uncomment the type of sensor in use:
 //#define DHTTYPE    DHT11     // DHT 11
@@ -28,8 +30,8 @@ int buttonstate;
 
 //MAC Address of the receiver 
 uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-float h = 0.02;
-float t = 0.01;
+float h = 0.03;
+float t = 0.04;
 int skip;
 //Structure example to send data
 //Must match the receiver structure
@@ -48,13 +50,12 @@ struct_message myData;
 
 unsigned long previousMillis = 0;   // Stores last time temperature was published
 //const long interval = 2100;        // Interval at which to publish sensor readings
-const long interval = 101000;        // Interval at which to publish sensor readings
+const long interval = 51000;        // Interval at which to publish sensor readings
 
 unsigned int readingId = 0;
 
 // Insert your SSID
-//constexpr char WIFI_SSID[] = "FAP_7BB3";
-constexpr char WIFI_SSID[] = "Outer Limits";
+constexpr char WIFI_SSID[] = "FAP_7BB3";
 
 int32_t getWiFiChannel(const char *ssid) {
   if (int32_t n = WiFi.scanNetworks()) {
@@ -123,10 +124,33 @@ if ((millis() - lastDebounceTime) > debounceDelay) {
 lastButtonState = digitalRead(BUTTON_PIN);
 */
 
-void Handler()
+void Handler1()
 {
-	buttonstate = digitalRead(PUSHBUTTON);
-	if(buttonstate == HIGH)
+	buttonstate1 = digitalRead(PUSHBUTTON1);
+	if(buttonstate1 == HIGH)
+	{
+		myData.extra_cmd = 74;
+		myData.temp = 0;
+		myData.hum = 0;
+		myData.readingId = 3;
+		myData.id = 3;
+		esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
+/*
+		if (result == ESP_OK) 
+		{
+		Serial.println("extra cmd Sent with success");
+		}
+		else 
+		{
+		Serial.println("Error sending the extra cmd");
+		}
+*/
+	}
+}
+void Handler2()
+{
+	buttonstate2 = digitalRead(PUSHBUTTON2);
+	if(buttonstate2 == HIGH)
 	{
 		myData.extra_cmd = 74;
 		myData.temp = 0;
@@ -151,9 +175,13 @@ void setup() {
   //Init Serial Monitor
   Serial.begin(115200);
   //dht.begin();
-   pinMode(PUSHBUTTON,INPUT);
-   attachInterrupt(digitalPinToInterrupt(D0), Handler, RISING);
-   buttonstate = 0;
+   pinMode(PUSHBUTTON1,INPUT);
+   attachInterrupt(digitalPinToInterrupt(D0), Handler1, RISING);
+   buttonstate1 = 0;
+
+   pinMode(PUSHBUTTON2,INPUT);
+   attachInterrupt(digitalPinToInterrupt(D1), Handler2, RISING);
+   buttonstate2 = 0;
   // Set device as a Wi-Fi Station and set channel
   WiFi.mode(WIFI_STA);
   skip = 0;

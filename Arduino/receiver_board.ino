@@ -13,9 +13,8 @@
 //#include <SoftwareSerial.h>
 
 // Replace with your network credentials (STATION)
-//const char* ssid = "extra ssid";
-//const char* password = "twister56";
-const char* ssid = "FAP_7BB3";
+const char* ssid = "Outer Limits";
+//const char* ssid = "FAP_7BB3";
 const char* password = "twister56";
 typedef unsigned char UCHAR;
 // Structure example to receive data
@@ -86,7 +85,7 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
 	Serial.printf("h value: %4.2f \r\n", incomingReadings.hum);
 	Serial.printf("readingID value: %d \r\n", incomingReadings.readingId);
 	Serial.printf("extra cmd: %d \r\n", incomingReadings.extra_cmd);
-	Serial.println();
+//	Serial.println();
 
 	sprintf((char *)msg2, "%u %4.2f %4.2f %d %d",incomingReadings.id, incomingReadings.temp, incomingReadings.hum, incomingReadings.readingId, incomingReadings.extra_cmd);
 	msg_len = strlen((const char *)msg2);
@@ -316,22 +315,23 @@ void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)
 		gclient.write((uint8_t *)&pre_preamble[0],8);
 		temp[0] = (UCHAR)(msg_len & 0x0F);
 		temp[1] = (UCHAR)((msg_len & 0xF0) >> 4);
-		//		printf("%02x %02x\n",temp[0],temp[1]);
+//		printf("%02x %02x\n",temp[0],temp[1]);
 
 		gclient.write((uint8_t *)&temp[0],1);
-		delay(1);
+//		Serial.printf("%02x ",temp[0]);
 		gclient.write((uint8_t *)&temp[1],1);
-		delay(1);
+//		Serial.printf("%02x ",temp[1]);
 		gclient.write((uint8_t *)&msg_type,1);
-		delay(1);
+//		Serial.printf("%02x ",msg_type);
 		gclient.write((uint8_t *)&dest,1);
-		delay(1);
+//		Serial.printf("%02x ",dest);
 
 		for(i = 0;i < msg_len;i++)
 		{
 			gclient.write((uint8_t *)&msg[i],1);
-			delay(1);
+//			Serial.printf("%02x ",msg[i]);
 		}
+//		Serial.println("");
 	}
 }
 #endif
