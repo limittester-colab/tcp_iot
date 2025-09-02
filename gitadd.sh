@@ -3,6 +3,7 @@ git add server/*
 git add cs_client/*
 git add queue/*
 git add Arduino/*
+git add esp-idf/*
 git add tasks.h
 git add cmd_tasks.c
 git add load_cmds.c

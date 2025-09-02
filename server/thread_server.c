@@ -365,7 +365,7 @@ void *listen_thread(void *socket_desc)
 */
 		if(pthreads_list[index].win_cl == 1)		// if this listen_thread is for the windows client
 		{
-			printf("win cl\n");
+//			printf("win cl\n");
 			msg_len = get_msgb(sock);
 			
 //			printf("msg_len: %d\n",msg_len);
@@ -698,7 +698,7 @@ void *tester_thread(void *socket_desc)
 			case 'a':
 				for(i = 0;i < MAX_THREADS;i++)
 				{
-					printf("%s index: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
+					printf("%s\t\t\tindex: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
 				}
 			break;
 			case 'b':
@@ -719,7 +719,7 @@ void *tester_thread(void *socket_desc)
 				}
 				for(i = 0;i < MAX_THREADS;i++)
 				{
-					printf("%s index: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
+					printf("%s\t\t\tindex: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
 				}
 			break;
 
@@ -789,7 +789,7 @@ void send_msg(int sd, int msg_len, UCHAR *msg, UCHAR msg_type)
 
 	for(i = 0;i < msg_len;i++)
 		send_tcp(sd, (UCHAR *)&msg[i],1);
-	uSleep(0,TIME_DELAY/4);
+//	uSleep(0,TIME_DELAY/4);
 }
 /****************************************************************************************************/
 // get/send_msgb is what the old server used to communicate with the
