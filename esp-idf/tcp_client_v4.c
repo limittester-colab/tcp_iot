@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Unlicense OR CC0-1.0
  */
 #include "sdkconfig.h"
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -13,27 +14,118 @@
 #include <arpa/inet.h>
 #include "esp_netif.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "nvs_flash.h"
+#include "esp_event.h"
+#include "esp_wifi.h"
+#include "esp_system.h"
+#include "esp_now.h"
+#include "esp_mac.h"
+
+#include "espnow_basic_config.h"
+
 #if defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
 #include "addr_from_stdin.h"
 #endif
 
 #if defined(CONFIG_EXAMPLE_IPV4)
 #define HOST_IP_ADDR CONFIG_EXAMPLE_IPV4_ADDR
+#warning "HOST_IP_ADDR defined"
 #elif defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
 #define HOST_IP_ADDR ""
+#warning "HOST_IP_ADDR not defined"
 #endif
+
+#define MY_ESPNOW_WIFI_MODE WIFI_MODE_STA
+#define MY_ESPNOW_WIFI_IF   ESP_IF_WIFI_STA
+// #define MY_ESPNOW_WIFI_MODE WIFI_MODE_AP
+// #define MY_ESPNOW_WIFI_IF   ESP_IF_WIFI_AP
 
 #define PORT CONFIG_EXAMPLE_PORT
 typedef unsigned char UCHAR;
 static const char *TAG = "example";
-static const char *payload = "Message from ESP32 ";
+//static const char *payload = "Message from ESP32 ";
 static const char *client_name = "wifi client\0";
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 static void read_sock_task(void *pvParameters);
 static int send_msg(int sd, int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest);
 static int get_msg(int sd);
+
+void my_data_receive(const uint8_t *sender_mac_addr, const my_data_t *data);
+
+//static xQueueHandle s_recv_queue;
+static QueueHandle_t s_recv_queue;
+
+typedef struct {
+    uint8_t sender_mac_addr[ESP_NOW_ETH_ALEN];
+    my_data_t data;
+} recv_packet_t;
 #endif
+
+static void queue_process_task(void *p)
+{
+    static recv_packet_t recv_packet;
+
+    ESP_LOGI(TAG, "Listening");
+    for(;;)
+    {
+        if(xQueueReceive(s_recv_queue, &recv_packet, portMAX_DELAY) != pdTRUE)
+        {
+            continue;
+        }
+
+        // Refer to user function
+        my_data_receive(recv_packet.sender_mac_addr, &recv_packet.data);
+    }
+}
+
+static void recv_cb(const uint8_t *mac_addr, const uint8_t *data, int len)
+{
+    static recv_packet_t recv_packet;
+
+    ESP_LOGI(TAG, "%d bytes incoming from MACSTR", len, MAC2STR(mac_addr));
+//    ESP_LOGI(TAG, "bytes incoming from MACSTR", MAC2STR(mac_addr));
+
+    if(len != sizeof(my_data_t))
+    {
+        ESP_LOGE(TAG, "Unexpected data length: %d != %u", len, sizeof(my_data_t));
+        return;
+    }
+
+    memcpy(&recv_packet.sender_mac_addr, mac_addr, sizeof(recv_packet.sender_mac_addr));
+    memcpy(&recv_packet.data, data, len);
+    if (xQueueSend(s_recv_queue, &recv_packet, 0) != pdTRUE) {
+        ESP_LOGW(TAG, "Queue full, discarded");
+        return;
+    }
+}
+
+static void init_espnow_master(void)
+{
+    const wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK( nvs_flash_erase() );
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK( ret );
+    ESP_ERROR_CHECK( esp_netif_init());
+    ESP_ERROR_CHECK( esp_event_loop_create_default() );
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    ESP_ERROR_CHECK( esp_wifi_set_mode(MY_ESPNOW_WIFI_MODE) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
+#if MY_ESPNOW_ENABLE_LONG_RANGE
+    ESP_ERROR_CHECK( esp_wifi_set_protocol(MY_ESPNOW_WIFI_IF, WIFI_PROTOCOL_11B|WIFI_PROTOCOL_11G|WIFI_PROTOCOL_11N|WIFI_PROTOCOL_LR) );
+#endif
+    ESP_ERROR_CHECK( esp_now_init() );
+    ESP_ERROR_CHECK( esp_now_register_recv_cb((esp_now_recv_cb_t)recv_cb) );
+    ESP_ERROR_CHECK( esp_now_set_pmk((const uint8_t *)MY_ESPNOW_PMK) );
+}
+
 void tcp_client(void)
 {
 	char host_ip[] = HOST_IP_ADDR;
@@ -56,6 +148,12 @@ void tcp_client(void)
 		struct sockaddr_storage dest_addr = { 0 };
 		ESP_ERROR_CHECK(get_addr_from_stdin(PORT, SOCK_STREAM, &ip_protocol, &addr_family, &dest_addr));
 #endif
+		s_recv_queue = xQueueCreate(10, sizeof(recv_packet_t));
+		assert(s_recv_queue);
+		BaseType_t err = xTaskCreate(queue_process_task, "recv_task", 8192, NULL, 4, NULL);
+		assert(err == pdPASS);
+		
+		init_espnow_master();
 
 		int sock =  socket(addr_family, SOCK_STREAM, ip_protocol);
 		if (sock < 0) 
@@ -65,8 +163,8 @@ void tcp_client(void)
 		}
 		ESP_LOGI(TAG, "Socket created, connecting to %s:%d", host_ip, PORT);
 
-		int err = connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-		if (err != 0) 
+		int err2 = connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+		if (err2 != 0) 
 		{
 			ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
 			break;
@@ -89,31 +187,8 @@ void tcp_client(void)
 			{
 				ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
 				vTaskDelay(5000);
-			}else vTaskDelay(1000);
+			}else vTaskDelay(5000);
 		}
-/*
-        while (1) 
-		{
-            int err = send(sock, payload, strlen(payload), 0);
-            if (err < 0) {
-                ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                break;
-            }
-
-            int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-            // Error occurred during receiving
-            if (len < 0) {
-                ESP_LOGE(TAG, "recv failed: errno %d", errno);
-                break;
-            }
-            // Data received
-            else {
-                rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-                ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-                ESP_LOGI(TAG, "%s", rx_buffer);
-            }
-        }
-*/
 		if (sock != -1) 
 		{
 			ESP_LOGE(TAG, "Shutting down socket and restarting...");
@@ -167,7 +242,7 @@ static void read_sock_task(void *pvParameters)
 //    ESP_LOGE(TAG, "%s with netif desc:%s Failed! exiting", __func__, netif_desc);
 	vTaskDelete(NULL);
 }
-
+#if 1
 /****************************************************************************************************/
 static int send_msg(int sd, int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest)
 {
@@ -241,3 +316,4 @@ static int get_msg(int sd)
 
 	return len;
 }
+#endif

@@ -161,10 +161,13 @@ void *listen_thread(void *socket_desc)
 			msg.mtext[1] = (UCHAR)msg_len;
 			msg.mtext[2] = (UCHAR)(msg_len >> 4);
 			memcpy(msg.mtext + 3,tempx,msg_len);
-
+/*
 			for(i = 0;i < msg_len + 3;i++)
 				printf("%02x ",msg.mtext[i]);
 			printf("\n");
+*/
+			for(i = 0;i < msg_len + 3;i++)
+				printf("%c",msg.mtext[i]);
 
 			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)

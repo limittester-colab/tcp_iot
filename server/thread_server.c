@@ -17,7 +17,8 @@
 #include "mytypes.h"
 #include "tasks.h"
 #define MAX 80
-#define TIME_DELAY_1 40,0	// this gives a diff of around 360 if just the 4 clients - 440 if counting the wifi client too
+//#define TIME_DELAY_1 40,0	// this gives a diff of around 360 if just the 4 clients - 440 if counting the wifi client too
+#define TIME_DELAY_1 60,0	// this gives a diff of around 540 if just the 4 clients - 600 if counting the wifi client too
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 static CMD_STRUCT cmd_array[];
@@ -50,6 +51,21 @@ int get_dest(int dest)
 		i++;
 	return i;
 }
+
+void ConvertSectoDay(int n)
+{
+    int day = n / (24 * 3600);
+
+    n = n % (24 * 3600);
+    int hour = n / 3600;
+
+    n %= 3600;
+    int minutes = n / 60 ;
+
+    n %= 60;
+    int seconds = n;
+	printf("days: %d hours: %d minutes %s seconds %s",days,hours,minutes,seconds);
+}    
 
 void print_cmd(UCHAR cmd)
 {
@@ -287,11 +303,11 @@ void *new_sock_thread(void *ret)
 		{
 			pthreads_list[no_threads].dest = 3;
 		}
-		if(strncmp(tempx,"151",3) == 0)
+		if(strncmp(tempx,"237",3) == 0)
 		{
 			pthreads_list[no_threads].dest = 4;
 		}
-		if(strncmp(tempx,"237",3) == 0)
+		if(strncmp(tempx,"239",3) == 0)
 		{
 			pthreads_list[no_threads].dest = 5;
 		}
@@ -339,7 +355,15 @@ void *listen_thread(void *socket_desc)
 	tm = *localtime(&now);
 	memset(tempx2,0,sizeof(tempx));
 	sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
-	printf("%s\n",tempx2);
+	printf("start time: %s\n",tempx2);
+
+	for(i = 0;i < MAX_THREADS;i++)
+	{
+		if(sock == pthreads_list[i].sock)
+		{
+			pthreads_list[i].org_time_stamp = now;
+		}
+	}
 
 	for(;;)
 	{
@@ -450,19 +474,7 @@ void *listen_thread(void *socket_desc)
 				}
 			}else if(cmd == UPDATE_STATUS)
 			{								// UPDATE_STATUS
-				printf("update status\n");
-	//			printf("staus: %s\n",tempx);
-	/*
-				gettimeofday(&mtv, NULL);
-				curtime2 = mtv.tv_sec;
-	*/
 				now = time(NULL);
-	/*
-				tm = *localtime(&now);
-				memset(tempx2,0,sizeof(tempx));
-				sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
-				printf("%s\n",tempx2);
-	*/
 				for(i = 0;i < MAX_THREADS;i++)
 				{
 					if(strcmp(pthreads_list[i].client_name,tempx) == 0)
@@ -472,10 +484,16 @@ void *listen_thread(void *socket_desc)
 						pthreads_list[i].time_stamp = now;
 						if(then > 0)
 						{
-							printf("diff: %.0f\n",time_diff);
-							tm = *localtime(&now);
 							memset(tempx2,0,sizeof(tempx2));
-							sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+							sprintf(tempx2,"%.2f seconds",time_diff);
+							time_diff = difftime(now,pthreads_list[i].org_time_stamp);
+							if(time_diff < 120)
+								sprintf(tempx2, "%.2f seconds",time_diff);
+							else if(time_diff > 120 && time_diff < 3600)
+								sprintf(tempx2, "%.2f minutes",time_diff/60);
+							else if(time_diff > 3600 && time_diff < 86400)
+								sprintf(tempx2,"%.2f hours",time_diff/3600);
+							else sprintf(tempx2, "%.2f days",time_diff/86400);
 							strcat(tempx," ");
 							strcat(tempx,tempx2);
 							printf("%s\n",tempx);

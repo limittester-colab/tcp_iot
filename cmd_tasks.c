@@ -69,7 +69,7 @@ void print_cmd(UCHAR cmd)
 	if(cmd >= NO_CMDS)
 	{
 		printf("unknown cmd: %d\n",cmd);
-	}else printf("%d %s\n",cmd, cmd_array[cmd].cmd_str);
+	}else printf("%s\n", cmd_array[cmd].cmd_str);
 }
 /*********************************************************************/
 void add_msg_queue(UCHAR cmd, UCHAR onoff)

@@ -26,6 +26,7 @@ typedef struct
 	char ipadd[4];
 	int dest;
 	time_t time_stamp;
+	time_t org_time_stamp;
 }THREADS;
 
 struct msgqbuf
