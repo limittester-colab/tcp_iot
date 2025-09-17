@@ -27,6 +27,9 @@ typedef struct
 	int dest;
 	time_t time_stamp;
 	time_t org_time_stamp;
+	int dirty_flag;			// set just after sending SEND_STATUS to client and 
+							// cleared when we receive a UPDATE_STATUS so we 
+							// know the client is responding (alive) 
 }THREADS;
 
 struct msgqbuf

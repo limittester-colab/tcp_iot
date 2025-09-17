@@ -161,13 +161,15 @@ void *listen_thread(void *socket_desc)
 			msg.mtext[1] = (UCHAR)msg_len;
 			msg.mtext[2] = (UCHAR)(msg_len >> 4);
 			memcpy(msg.mtext + 3,tempx,msg_len);
-/*
-			for(i = 0;i < msg_len + 3;i++)
+
+			for(i = 3;i < msg_len + 3;i++)
 				printf("%02x ",msg.mtext[i]);
 			printf("\n");
-*/
-			for(i = 0;i < msg_len + 3;i++)
+
+			for(i = 3;i < msg_len + 3;i++)
 				printf("%c",msg.mtext[i]);
+
+			printf(" ");
 
 			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)
@@ -296,7 +298,6 @@ int main(int argc, char *argv[])
     int sockfd, connfd;
     struct sockaddr_in servaddr, cli;
 	char buff[200];
-	char buff2[20];
 	int n = 0;
 	close_program = 0;
 	int test;
@@ -326,7 +327,6 @@ int main(int argc, char *argv[])
 	}
 	printf("basic_controls_qid: %d\n",main_qid);
 
-	strcpy(buff2,"test send\0");
 	memset(client_name, 0, sizeof(client_name));
 	//printf("%s\n",argv[1]);
 	strcpy(client_name, argv[1]);

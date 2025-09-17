@@ -76,7 +76,6 @@ static void queue_process_task(void *p)
         {
             continue;
         }
-
         // Refer to user function
         my_data_receive(recv_packet.sender_mac_addr, &recv_packet.data);
     }
@@ -86,8 +85,7 @@ static void recv_cb(const uint8_t *mac_addr, const uint8_t *data, int len)
 {
     static recv_packet_t recv_packet;
 
-    ESP_LOGI(TAG, "%d bytes incoming from MACSTR", len, MAC2STR(mac_addr));
-//    ESP_LOGI(TAG, "bytes incoming from MACSTR", MAC2STR(mac_addr));
+//    ESP_LOGI(TAG, "%d bytes incoming from MACSTR", len, MAC2STR(mac_addr));
 
     if(len != sizeof(my_data_t))
     {
@@ -153,7 +151,7 @@ void tcp_client(void)
 		BaseType_t err = xTaskCreate(queue_process_task, "recv_task", 8192, NULL, 4, NULL);
 		assert(err == pdPASS);
 		
-		init_espnow_master();
+//		init_espnow_master();
 
 		int sock =  socket(addr_family, SOCK_STREAM, ip_protocol);
 		if (sock < 0) 

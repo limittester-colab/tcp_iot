@@ -27,7 +27,7 @@ int buttonstate;
 //DHT dht(DHTPIN, DHTTYPE);
 
 //MAC Address of the receiver 
-uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t broadcastAddress[] = {0x14, 0x2b, 0x2f, 0xcd, 0x9d, 0x7c};
 float h = 0.02;
 float t = 0.01;
 int skip;

@@ -28,7 +28,8 @@ float h1;
 float t1;
 
 //MAC Address of the receiver 
-uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t broadcastAddress[] = {0x14, 0x2b, 0x2f, 0xcd, 0x9d, 0x7c};
+//14:2b:2f:cd:9d:7c
 
 //Structure example to send data
 //Must match the receiver structure

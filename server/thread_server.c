@@ -28,13 +28,14 @@ void *read_queue_thread(void *);
 void *new_sock_thread(void *);
 void *timer_thread(void *);
 void *tester_thread(void *);
+void logoff_client(char *client_name);
+
 pthread_t cmd_task_thread;
 pthread_t pbasic_controls_task_thread;
 int highest_sock;
 //pthread_mutex_t tcp_read_lock=PTHREAD_MUTEX_INITIALIZER;
 //pthread_mutex_t tcp_write_lock=PTHREAD_MUTEX_INITIALIZER;
 static char client_name[30];
-
 int no_threads;
 int win_cl_index = -1;
 
@@ -51,7 +52,7 @@ int get_dest(int dest)
 		i++;
 	return i;
 }
-
+/*
 void ConvertSectoDay(int n)
 {
     int day = n / (24 * 3600);
@@ -64,9 +65,9 @@ void ConvertSectoDay(int n)
 
     n %= 60;
     int seconds = n;
-	printf("days: %d hours: %d minutes %s seconds %s",days,hours,minutes,seconds);
+	printf("days: %d hours: %d minutes %s seconds %s",day,hour,minutes,seconds);
 }    
-
+*/
 void print_cmd(UCHAR cmd)
 {
 	if(cmd >= NO_CMDS)
@@ -134,6 +135,8 @@ int main(int argc , char *argv[])
 		pthreads_list[i].dest = -1;
 		pthreads_list[i].sock = -1;
 		pthreads_list[i].time_stamp = 0;
+		pthreads_list[i].dirty_flag = 0;
+		
 //		memset(pthreads_list[i].client_name,0,30);
 	}
 
@@ -303,7 +306,7 @@ void *new_sock_thread(void *ret)
 		{
 			pthreads_list[no_threads].dest = 3;
 		}
-		if(strncmp(tempx,"237",3) == 0)
+		if(strncmp(tempx,"217",3) == 0)
 		{
 			pthreads_list[no_threads].dest = 4;
 		}
@@ -413,6 +416,7 @@ void *listen_thread(void *socket_desc)
 			else
 			{
 				printf("bad msg_len 1 %d\n",msg_len);
+				logoff_client(pthreads_list[i].client_name);
 			}
 		}
 
@@ -479,8 +483,13 @@ void *listen_thread(void *socket_desc)
 				{
 					if(strcmp(pthreads_list[i].client_name,tempx) == 0)
 					{
+						pthreads_list[i].dirty_flag = 0;
 						then = pthreads_list[i].time_stamp;
-						time_diff = difftime(now,then);
+						time_diff = difftime(now, then);
+						if(then > 0)
+							printf("diff: %.0f\n",time_diff);
+						// diff should be ~300 for 4 clients including the windows client 
+						// if diff > 400 then log it off and consider it dead 
 						pthreads_list[i].time_stamp = now;
 						if(then > 0)
 						{
@@ -658,36 +667,42 @@ void *read_thread(void *socket_desc)
 // off the list and delete the listen_thread assoc'd with it 
 void *timer_thread(void *ret)
 {
-	char buff[40];
+	char buff[100];
 	int n;
-	int val;
 	int cmd = SEND_STATUS;
 	int i;
-	int j;
 
 	strcpy(buff,"timer \0");
 
 	uSleep(TIME_DELAY_1);
-	j = 0;
 //	printf("timer thread started\n");
 	for(;;)
 	{
 		uSleep(TIME_DELAY_1);
 		for(i = 0;i < no_threads;i++)
 		{
+			printf("%s\n",pthreads_list[i].client_name);
 			if(pthreads_list[i].sock > 0)
 			{
-//				printf("%s %d\n",pthreads_list[i].ipadd, pthreads_list[i].sock);
-				val = i;
-//				sprintf(buff2, "%s %d %d",buff, val,j);
-//				printf("%s\n",buff2);
-				n = strlen(buff);
-				if(pthreads_list[i].win_cl == 1)
-					send_msgb(pthreads_list[i].sock, n*2, buff, cmd);
-				else
-					send_msg(pthreads_list[i].sock, n, buff, cmd);
-				j++;
-				uSleep(TIME_DELAY_1);
+				printf("%s %d\n",pthreads_list[i].ipadd, pthreads_list[i].sock);
+				pthreads_list[i].dirty_flag++;			// set dirty_flag so UPDATE_STATUS can clear it 
+														// to show that this client is still up
+				if(pthreads_list[i].dirty_flag > 2)
+				{
+					printf("dirty_flag: %d %s\n",pthreads_list[i].dirty_flag, pthreads_list[i].client_name);
+					bzero(buff,sizeof(buff));
+					strcpy(buff, pthreads_list[i].client_name);
+					strcat(buff," logged off");
+					logoff_client(pthreads_list[i].client_name);
+				}else 
+				{
+					n = strlen(buff);
+					if(pthreads_list[i].win_cl == 1)
+						send_msgb(pthreads_list[i].sock, n*2, buff, cmd);
+					else
+						send_msg(pthreads_list[i].sock, n, buff, cmd);
+					uSleep(TIME_DELAY_1);
+				}
 			}
 			uSleep(TIME_DELAY_1);
 		}
@@ -720,6 +735,8 @@ void *tester_thread(void *socket_desc)
 				}
 			break;
 			case 'b':
+				logoff_client("wifi client");
+/*
 				for(i = 0;i < MAX_THREADS;i++)
 				{
 					if(strcmp(pthreads_list[i].client_name,"wifi client") == 0)
@@ -735,6 +752,7 @@ void *tester_thread(void *socket_desc)
 						no_threads--;
 					}
 				}
+*/
 				for(i = 0;i < MAX_THREADS;i++)
 				{
 					printf("%s\t\t\tindex: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
@@ -746,6 +764,28 @@ void *tester_thread(void *socket_desc)
 
 	}while(key != 'q' && key != 'Q');
 }
+/****************************************************************************************************/
+void logoff_client(char *client_name)
+{
+	int i;
+
+	for(i = 0;i < MAX_THREADS;i++)
+	{
+		if(strcmp(pthreads_list[i].client_name, client_name) == 0 && pthreads_list[i].sock > 0)
+		{
+			printf("logoff: %s sock: %d dest %d\n", pthreads_list[i].client_name, pthreads_list[i].sock,pthreads_list[i].dest);
+//						send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
+			close(pthreads_list[i].sock);
+			pthread_kill(pthreads_list[i].listen_thread,NULL);
+			pthreads_list[i].sock = -1;
+			pthreads_list[i].dest = -1;
+//			memset(pthreads_list[i].client_name, 0, 30);
+			memset(pthreads_list[i].ipadd, 0, 4);
+			no_threads--;
+		}
+	}
+}
+
 #if 1
 /****************************************************************************************************/
 // get preamble & msg len from client
@@ -938,6 +978,7 @@ int get_sock(int sd, UCHAR *buf, int buflen, int block, char *errmsg)
 //	if(rc < 0 && errno != 11)
 	if(rc < 0)
 	{
+		printf("bad sock: %d\n",sd);
 		for(i = 0;i < buflen;i++)
 		{
 			printf("%02x ",buf[i]);

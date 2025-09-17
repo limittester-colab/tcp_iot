@@ -43,34 +43,28 @@ WiFiClient gclient;
 int msg_len;
 UCHAR cmd, dest;
 
+TaskHandle_t Task1Handle = NULL;
+TaskHandle_t Task2Handle = NULL;
+
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 
 void send_msg(int msg_len, UCHAR *msg, UCHAR msg_type, UCHAR dest);
 int get_msg(void);
-/*
-#define SOFTSERIAL_BAUD 9600
-// Define pins for the first software serial port: TX on pin 6, RX on pin 7.
-#define SS1_TX 6
-#define SS1_RX 7
-SoftwareSerial softSerial1(SS1_RX, SS1_TX);
-*/
-char xbyte = ' ';
 
 AsyncWebServer server(80);
 AsyncEventSource events("/events");
-int new_data;
 
 #endif
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) { 
   // Copies the sender mac address to a string
-/*
+
   char macStr[18];
   Serial.print("Packet received from: ");
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   Serial.println(macStr);
-*/
+
 	memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
 	board["id"] = incomingReadings.id;
 	board["temperature"] = incomingReadings.temp;
@@ -94,6 +88,42 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
 	else cmd = 73;
 	send_msg(msg_len, msg2, cmd, dest);
 }
+
+void Task1(void *parameter) 
+{
+	for (;;) 
+	{
+		digitalWrite(LED_BUILTIN, HIGH);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		digitalWrite(LED_BUILTIN, LOW);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+	}
+}
+
+void Task2(void *parameter) 
+{
+	int msg_len;
+	UCHAR tempx[200];
+	UCHAR cmd;
+	int i;
+
+	vTaskDelay(10000);
+
+	for (;;) 
+	{
+		msg_len = get_msg();		// this causes a reboot ???
+		Serial.printf("msg_len: %d",msg_len);
+		cmd = tempx[0];
+		Serial.printf("cmd: %d",cmd);
+		memmove(tempx,tempx+1,msg_len);
+		for(i = 0;i < msg_len;i++)
+		{
+			Serial.printf("%c",tempx[i]);
+		}
+		Serial.println();
+	}
+}
+
 #if 1
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -169,14 +199,35 @@ if (!!window.EventSource) {
 #endif
 void setup() 
 {
+  pinMode(LED_BUILTIN, OUTPUT); 
+  xTaskCreatePinnedToCore(
+    Task1,             // Task function
+    "Task1",           // Task name
+    10000,             // Stack size (bytes)
+    NULL,              // Parameters
+    1,                 // Priority
+    &Task1Handle,      // Task handle
+    1                  // Core 1
+  );
+
+  xTaskCreatePinnedToCore(
+    Task2,            // Task function
+    "Task2",          // Task name
+    10000,            // Stack size (bytes)
+    NULL,             // Parameters     
+    1,                // Priority
+    &Task2Handle,     // Task handle
+    1                 // Core 1
+  );
+
+
 // Initialize Serial Monitor
 //	softSerial1.begin(SOFTSERIAL_BAUD);
 	Serial.begin(115200);
-	new_data = 0;
   // Set the device as a Station and Soft Access Point simultaneously
 	WiFi.mode(WIFI_AP_STA);
 //  WiFi.mode(WIFI_STA);
-  
+
   // Set device as a Wi-Fi Station
 	WiFi.begin(ssid, password);
 	while (WiFi.status() != WL_CONNECTED) 
@@ -259,7 +310,7 @@ void loop()
 	Serial.println("start sending data");
 	for(;;)
 	{
-		delay(100);
+		delay(1000);
 	}
 }
 #if 1
@@ -270,33 +321,33 @@ void loop()
 // returns message length
 int get_msg(void)
 {
-int len;
-UCHAR low, high;
-int ret;
-int i;
-/*
-UCHAR preamble[10];
-ret = recv_tcp(preamble,8,1);
-//	printf("ret: %d\n",ret);
-if(ret < 0)
-{
-printf("ret < 0");
-}
-if(memcmp(preamble,pre_preamble,8) != 0)
-{
-printf("bad preamble\n");
-//		uSleep(2,0);
-return -1;
-}
-ret = recv_tcp(&low,1,1);
-ret = recv_tcp(&high,1,1);
-//	printf("%02x %02x\n",low,high);
-len = 0;
-len = (int)(high);
-len <<= 4;
-len |= (int)low;
-*/
-return len;
+	int len;
+	UCHAR low, high;
+	int ret;
+	int i;
+
+	UCHAR preamble[10];
+	ret = gclient.read(preamble,8);
+	//	printf("ret: %d\n",ret);
+	if(ret < 0)
+	{
+		printf("ret < 0");
+	}
+	if(memcmp(preamble,pre_preamble,8) != 0)
+	{
+		printf("bad preamble\n");
+	//		uSleep(2,0);
+		return -1;
+	}
+	ret = gclient.read(&low,1);
+	ret = gclient.read(&high,1);
+	//	printf("%02x %02x\n",low,high);
+	len = 0;
+	len = (int)(high);
+	len <<= 4;
+	len |= (int)low;
+
+	return len;
 }
 /*********************************************************************/
 // send the preamble, msg len, msg_type & dest (dest is index into client table)
