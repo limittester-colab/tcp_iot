@@ -43,8 +43,8 @@ WiFiClient gclient;
 int msg_len;
 UCHAR cmd, dest;
 
-TaskHandle_t Task1Handle = NULL;
-TaskHandle_t Task2Handle = NULL;
+//TaskHandle_t Task1Handle = NULL;
+//TaskHandle_t Task2Handle = NULL;
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 
@@ -88,14 +88,14 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
 	else cmd = 73;
 	send_msg(msg_len, msg2, cmd, dest);
 }
-
+/*
 void Task1(void *parameter) 
 {
 	for (;;) 
 	{
-		digitalWrite(LED_BUILTIN, HIGH);
+//		digitalWrite(LED_BUILTIN, HIGH);
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
-		digitalWrite(LED_BUILTIN, LOW);
+//		digitalWrite(LED_BUILTIN, LOW);
 		vTaskDelay(1000 / portTICK_PERIOD_MS);
 	}
 }
@@ -104,7 +104,7 @@ void Task2(void *parameter)
 {
 	int msg_len;
 	UCHAR tempx[200];
-	UCHAR cmd;
+	UCHAR cmd1;
 	int i;
 
 	vTaskDelay(10000);
@@ -113,8 +113,8 @@ void Task2(void *parameter)
 	{
 		msg_len = get_msg();		// this causes a reboot ???
 		Serial.printf("msg_len: %d",msg_len);
-		cmd = tempx[0];
-		Serial.printf("cmd: %d",cmd);
+		cmd1 = tempx[0];
+		Serial.printf("cmd: %d",cmd1);
 		memmove(tempx,tempx+1,msg_len);
 		for(i = 0;i < msg_len;i++)
 		{
@@ -123,7 +123,7 @@ void Task2(void *parameter)
 		Serial.println();
 	}
 }
-
+*/
 #if 1
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
@@ -199,7 +199,8 @@ if (!!window.EventSource) {
 #endif
 void setup() 
 {
-  pinMode(LED_BUILTIN, OUTPUT); 
+//  pinMode(LED_BUILTIN, OUTPUT); 
+/*
   xTaskCreatePinnedToCore(
     Task1,             // Task function
     "Task1",           // Task name
@@ -219,7 +220,7 @@ void setup()
     &Task2Handle,     // Task handle
     1                 // Core 1
   );
-
+*/
 
 // Initialize Serial Monitor
 //	softSerial1.begin(SOFTSERIAL_BAUD);
@@ -252,6 +253,7 @@ void setup()
 
 	esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
 
+/*
 	server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
 	{
 		request->send(200, "text/html", index_html);
@@ -272,6 +274,7 @@ void setup()
 	});
 	server.addHandler(&events);
 	server.begin();
+*/
 }
 
 void loop() 
@@ -285,7 +288,7 @@ void loop()
 		Serial.println("ping");
 		lastEventTime = millis();
 	}
-
+/*
 	if (!gclient.connect(host, port)) 
 	{
 		Serial.println("connection failed");
@@ -307,6 +310,7 @@ void loop()
 	Serial.println("connected");
 	cmd = 73;		// SEND_IOT_VALUES cmd
 	dest = 5;
+*/
 	Serial.println("start sending data");
 	for(;;)
 	{

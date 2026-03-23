@@ -96,7 +96,7 @@ static esp_err_t send_espnow_data(void)
 
     // Go to the user function to populate the data to send
     my_data_populate(&data);
-	ESP_LOGI(TAG, "data: %d",data.random_value);
+	ESP_LOGI(TAG, "data: %d",data.extra_cmd);
 
     // Send it
 //    ESP_LOGI(TAG, "Sending %u bytes to MACSTR", sizeof(data), MAC2STR(destination_mac));

@@ -89,7 +89,6 @@ void add_msg_queue(UCHAR cmd, UCHAR onoff)
 	}
 //	printf("add_msg_queue\n");
 //	pthread_mutex_unlock(&msg_queue_lock);
-//	printf("add: %d %x\r\n",msg_queue_ptr,cmd);
 }
 /*********************************************************************/
 // task to get commands from the sock
@@ -320,7 +319,7 @@ UCHAR get_host_cmd_task(int *test)
 		// msg from sock 
 //		printf("\n..\n");
 		msg.mtype = msgtype;
-//		printf("start msgrcv\n");
+		printf("start msgrcv\n");
 		if (msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR) == -1) 
 		{
 			if (errno != ENOMSG) 

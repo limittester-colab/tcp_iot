@@ -4,12 +4,21 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+typedef struct __attribute__((packed)) {
+  int id;
+  float temp;
+  float hum;
+  unsigned int readingId;
+  int extra_cmd;
+} my_data_t;
+
+/*
 // Define the structure of your data
 typedef struct __attribute__((packed)) {
     uint32_t random_value;
     bool button_pushed;
 } my_data_t;
-
+*/
 // Destination MAC address
 // The default address is the broadcast address, which will work out of the box, but the slave will assume every tx succeeds.
 // Setting to the master's address will allow the slave to determine if sending succeeded or failed.

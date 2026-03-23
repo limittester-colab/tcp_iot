@@ -18,7 +18,7 @@
 #include "tasks.h"
 #define MAX 80
 //#define TIME_DELAY_1 40,0	// this gives a diff of around 360 if just the 4 clients - 440 if counting the wifi client too
-#define TIME_DELAY_1 60,0	// this gives a diff of around 540 if just the 4 clients - 600 if counting the wifi client too
+#define TIME_DELAY_1 120,0	// this gives a diff of around 540 if just the 4 clients - 600 if counting the wifi client too
 
 static UCHAR pre_preamble[] = {0xF8,0xF0,0xF0,0xF0,0xF0,0xF0,0xF0,0x00};
 static CMD_STRUCT cmd_array[];
@@ -237,13 +237,13 @@ void *new_sock_thread(void *ret)
 		puts("bind failed");
 		exit(1);
 	}
-	puts("bind done");
+//	puts("bind done");
 	
 	//Listen
 	listen(socket_desc , 3);
 	
 	//Accept and incoming connection
-	puts("Waiting for incoming connections...");
+//	puts("Waiting for incoming connections...");
 	c = sizeof(struct sockaddr_in);
 	while( (new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)) )
 	{
@@ -306,7 +306,7 @@ void *new_sock_thread(void *ret)
 		{
 			pthreads_list[no_threads].dest = 3;
 		}
-		if(strncmp(tempx,"217",3) == 0)
+		if(strncmp(tempx,"151",3) == 0)
 		{
 			pthreads_list[no_threads].dest = 4;
 		}
@@ -315,8 +315,8 @@ void *new_sock_thread(void *ret)
 			pthreads_list[no_threads].dest = 5;
 		}
 
-		printf("start: %d %s %d\n",pthreads_list[no_threads].dest, pthreads_list[no_threads].ipadd, pthreads_list[no_threads].sock);
-		printf("no_threads: %d\n",no_threads);
+//		printf("start: %d %s %d\n",pthreads_list[no_threads].dest, pthreads_list[no_threads].ipadd, pthreads_list[no_threads].sock);
+//		printf("no_threads: %d\n",no_threads);
 //		printf("sock: %d\n",new_socket);
 		no_threads++;
 
@@ -358,7 +358,7 @@ void *listen_thread(void *socket_desc)
 	tm = *localtime(&now);
 	memset(tempx2,0,sizeof(tempx));
 	sprintf(tempx2,"%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
-	printf("start time: %s\n",tempx2);
+//	printf("start time: %s\n",tempx2);
 
 	for(i = 0;i < MAX_THREADS;i++)
 	{
@@ -404,7 +404,7 @@ void *listen_thread(void *socket_desc)
 			if(win_cl_index < 0)
 			{
 				win_cl_index = index;
-				printf("win_cl_index: %d\n",win_cl_index);
+//				printf("win_cl_index: %d\n",win_cl_index);
 			}
 		}
 		else										// any of the other clients
@@ -486,8 +486,10 @@ void *listen_thread(void *socket_desc)
 						pthreads_list[i].dirty_flag = 0;
 						then = pthreads_list[i].time_stamp;
 						time_diff = difftime(now, then);
+/*
 						if(then > 0)
 							printf("diff: %.0f\n",time_diff);
+*/
 						// diff should be ~300 for 4 clients including the windows client 
 						// if diff > 400 then log it off and consider it dead 
 						pthreads_list[i].time_stamp = now;
@@ -505,7 +507,7 @@ void *listen_thread(void *socket_desc)
 							else sprintf(tempx2, "%.2f days",time_diff/86400);
 							strcat(tempx," ");
 							strcat(tempx,tempx2);
-							printf("%s\n",tempx);
+//							printf("%s\n",tempx);
 							msg_len = strlen(tempx);
 							cmd = SEND_MESSAGE2;
 							send_msgb(pthreads_list[win_cl_index].sock, msg_len*2, (UCHAR *)tempx, cmd);
@@ -582,7 +584,7 @@ void *listen_thread(void *socket_desc)
 	}
 	if(msg_len == 0)
 	{
-		puts("Client disconnected");
+//		puts("Client disconnected");
 		pthreads_list[index].sock = -1;
 		pthreads_list[index].qid = -1;
 //		fflush(stdout);
@@ -681,13 +683,13 @@ void *timer_thread(void *ret)
 		uSleep(TIME_DELAY_1);
 		for(i = 0;i < no_threads;i++)
 		{
-			printf("%s\n",pthreads_list[i].client_name);
+//			printf("%s\n",pthreads_list[i].client_name);
 			if(pthreads_list[i].sock > 0)
 			{
-				printf("%s %d\n",pthreads_list[i].ipadd, pthreads_list[i].sock);
+//				printf("%s %d\n",pthreads_list[i].ipadd, pthreads_list[i].sock);
 				pthreads_list[i].dirty_flag++;			// set dirty_flag so UPDATE_STATUS can clear it 
 														// to show that this client is still up
-				if(pthreads_list[i].dirty_flag > 2)
+				if(pthreads_list[i].dirty_flag > 1)
 				{
 					printf("dirty_flag: %d %s\n",pthreads_list[i].dirty_flag, pthreads_list[i].client_name);
 					bzero(buff,sizeof(buff));
@@ -731,7 +733,10 @@ void *tester_thread(void *socket_desc)
 			case 'a':
 				for(i = 0;i < MAX_THREADS;i++)
 				{
-					printf("%s\t\t\tindex: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
+					if(strcmp(pthreads_list[i].client_name,"Windows Client") == 0)
+						printf("%s\t\tindex: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
+					else
+						printf("%s\t\t\tindex: %d addr: %s sock: %d\n",pthreads_list[i].client_name, pthreads_list[i].dest, pthreads_list[i].ipadd, pthreads_list[i].sock);
 				}
 			break;
 			case 'b':
@@ -776,11 +781,11 @@ void logoff_client(char *client_name)
 			printf("logoff: %s sock: %d dest %d\n", pthreads_list[i].client_name, pthreads_list[i].sock,pthreads_list[i].dest);
 //						send_msg(pthreads_list[i].sock, msg_len, tempx, cmd);
 			close(pthreads_list[i].sock);
-			pthread_kill(pthreads_list[i].listen_thread,NULL);
+//			pthread_kill(pthreads_list[i].listen_thread,NULL);
 			pthreads_list[i].sock = -1;
 			pthreads_list[i].dest = -1;
 //			memset(pthreads_list[i].client_name, 0, 30);
-			memset(pthreads_list[i].ipadd, 0, 4);
+//			memset(pthreads_list[i].ipadd, 0, 4);
 			no_threads--;
 		}
 	}

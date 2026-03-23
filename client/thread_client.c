@@ -161,7 +161,7 @@ void *listen_thread(void *socket_desc)
 			msg.mtext[1] = (UCHAR)msg_len;
 			msg.mtext[2] = (UCHAR)(msg_len >> 4);
 			memcpy(msg.mtext + 3,tempx,msg_len);
-
+/*
 			for(i = 3;i < msg_len + 3;i++)
 				printf("%02x ",msg.mtext[i]);
 			printf("\n");
@@ -169,8 +169,8 @@ void *listen_thread(void *socket_desc)
 			for(i = 3;i < msg_len + 3;i++)
 				printf("%c",msg.mtext[i]);
 
-			printf(" ");
-
+			printf("\n");
+*/
 			ret = msgsnd(main_qid, (void *) &msg, sizeof(msg.mtext), MSG_NOERROR);
 			if(ret == -1)
 			{
@@ -311,27 +311,31 @@ int main(int argc, char *argv[])
 
 	main_key = MAIN_KEY;
 	main_qid = msgget(main_key, IPC_CREAT | 0666);
-	if(main_qid < 0)
+
+//	if(main_qid < 0)
+	if(1)
 	{
 		printf("errno: %d\n",errno);
-		exit(1);
+//		exit(1);
 	}
 	printf("main_qid: %d\n",main_qid);
 
 	basic_controls_key = BASIC_CONTROLS_KEY;
 	basic_controls_qid = msgget(basic_controls_key, IPC_CREAT | 0666);
-	if(basic_controls_qid < 0)
+	//if(basic_controls_qid < 0)
+		if(1)
 	{
 		printf("errno: %d\n",errno);
-		exit(1);
+//		exit(1);
 	}
-	printf("basic_controls_qid: %d\n",main_qid);
+	printf("basic_controls_qid: %d %u\n",main_qid,main_qid);
 
 	memset(client_name, 0, sizeof(client_name));
 	//printf("%s\n",argv[1]);
 	strcpy(client_name, argv[1]);
 	printf("client name: %s\n",client_name);
     // socket create and verification
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1) {
         printf("socket creation failed...\n");
