@@ -658,11 +658,11 @@ UCHAR basic_controls_task(int *test)
 		}
 		cmd = msg.mtext[0];
 		onoff = msg.mtext[1];
-
+/*
 		printf("basic controls: ");
 		print_cmd(cmd);
 		printf("%d\n",onoff);
-
+*/
 		usleep(_5MS);
 		switch(cmd)
 		{

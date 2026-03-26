@@ -56,7 +56,7 @@ void *send_queue_thread(void *buff)
 	{
 		memset(msg.mtext,0,sizeof(msg.mtext));
 		ret = msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR);
-		printf("ret: %ld errno: %d\n",ret,errno);
+//		printf("ret: %ld errno: %d\n",ret,errno);
 		if(ret == -1)
 		{
 			if(errno != ENOMSG)
@@ -76,6 +76,7 @@ void *send_queue_thread(void *buff)
 		msg_len |= (int)(msg.mtext[2] << 4);
 		memset(tempx,0,sizeof(tempx));
 		memcpy(tempx,msg.mtext + 3,msg_len);
+/*
 		printf("cmd: %d msg_len: %d\n",cmd, msg_len);
 		printf("%s\n",tempx);
 
@@ -84,6 +85,7 @@ void *send_queue_thread(void *buff)
 			printf("%02x ",msg.mtext[i]);
 		}
 		printf("\n");
+*/
 	}
 }
 

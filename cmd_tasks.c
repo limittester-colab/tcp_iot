@@ -319,7 +319,7 @@ UCHAR get_host_cmd_task(int *test)
 		// msg from sock 
 //		printf("\n..\n");
 		msg.mtype = msgtype;
-		printf("start msgrcv\n");
+//		printf("start msgrcv\n");
 		if (msgrcv(main_qid, (void *) &msg, sizeof(msg.mtext), msgtype, MSG_NOERROR) == -1) 
 		{
 			if (errno != ENOMSG) 
@@ -331,7 +331,7 @@ UCHAR get_host_cmd_task(int *test)
 			printf("%d\n",errno);
 		}
 		cmd = msg.mtext[0];
-		print_cmd(cmd);
+//		print_cmd(cmd);
 		msg_len = (int)msg.mtext[1];
 		msg_len |= (int)(msg.mtext[2] << 4);
 //		printf("sched cmd host %d\n",msg_len);
